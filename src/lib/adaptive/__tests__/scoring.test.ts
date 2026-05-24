@@ -21,7 +21,8 @@ function formation(
   domaine_id: string,
   niveau_id: string,
   actif = true,
-  prerequis_ids: string[] = []
+  prerequis_ids: string[] = [],
+  est_prerequis_pur = false
 ): Formation {
   return {
     id,
@@ -34,6 +35,7 @@ function formation(
     description: null,
     actif,
     prerequis_ids,
+    est_prerequis_pur,
     cree_le: "",
     mise_a_jour_le: ""
   };
@@ -156,6 +158,18 @@ describe("trouverRecommandation", () => {
     const r = resultat({ domaine_id: "d1", niveau_atteint: "avance" });
     expect(trouverRecommandation(r, formations, NIVEAUX)).toBeNull();
   });
+
+  it("exclut les formations purement préparatoires (est_prerequis_pur=true)", () => {
+    // Initiation à la programmation (Déb, est_prerequis_pur=true) ne doit
+    // JAMAIS être recommandée directement, même si c'est la seule au niveau cible.
+    const formations: Formation[] = [
+      formation("init", "d1", "n1", true, [], true),  // pure prereq
+      formation("vba1", "d1", "n2")                    // niveau Intermédiaire
+    ];
+    const r = resultat({ domaine_id: "d1", niveau_atteint: null });
+    // Client n'a rien atteint → cible Débutant → init exclu → fallback Int = vba1
+    expect(trouverRecommandation(r, formations, NIVEAUX)?.id).toBe("vba1");
+  });
 });
 
 // =============================================================================
@@ -236,6 +250,28 @@ describe("chainePrerequis", () => {
     const chaine = chainePrerequis(cible, [p1, cible], NIVEAUX, niveauxMap);
     expect(chaine).toEqual([]);
   });
+
+  it("pure prereq (est_prerequis_pur=true) au MÊME niveau que le client : INCLUS (comparaison stricte >)", () => {
+    // Cas VBA réel : client Débutant en VBA, recommandation VBA N1 (Int),
+    // pré-requis Initiation à la programmation (Déb, même domaine, pur).
+    // L'avoir « atteint Débutant » dans le quiz VBA ne prouve PAS qu'il
+    // connaît les concepts de programmation enseignés dans Initiation.
+    const init = formation("init", "d_vba", "n1", true, [], true); // pure prereq
+    const vba1 = formation("vba1", "d_vba", "n2", true, ["init"]);
+    const niveauxMap = new Map<string, NiveauSlug | null>([["d_vba", "debutant"]]);
+    const chaine = chainePrerequis(vba1, [init, vba1], NIVEAUX, niveauxMap);
+    expect(chaine.map((f) => f.id)).toEqual(["init"]);
+  });
+
+  it("pure prereq : OMIS quand le client a STRICTEMENT dépassé son niveau", () => {
+    // Client Intermédiaire en VBA (idx 1), pure prereq Initiation (idx 0).
+    // 1 > 0 → strictement dépassé → omis.
+    const init = formation("init", "d_vba", "n1", true, [], true);
+    const vba2 = formation("vba2", "d_vba", "n3", true, ["init"]);
+    const niveauxMap = new Map<string, NiveauSlug | null>([["d_vba", "intermediaire"]]);
+    const chaine = chainePrerequis(vba2, [init, vba2], NIVEAUX, niveauxMap);
+    expect(chaine).toEqual([]);
+  });
 });
 
 describe("construireRecommandations (intègre la chaîne de pré-requis)", () => {
@@ -272,8 +308,6 @@ describe("construireRecommandations (intègre la chaîne de pré-requis)", () =>
     const recos = construireRecommandations(resultats, [p1, p2, cible], NIVEAUX);
     expect(recos.length).toBe(1);
     expect(recos[0].formation.id).toBe("c");
-    // Le client est déjà Intermédiaire → p1 (Débutant) et p2 (Intermédiaire) sont
-    // considérés comme maîtrisés → chaîne vide.
     expect(recos[0].prerequis_chaine).toEqual([]);
   });
 });

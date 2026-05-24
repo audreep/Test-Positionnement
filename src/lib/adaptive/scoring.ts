@@ -56,6 +56,9 @@ export function trouverRecommandation(
 ): Formation | null {
   const formationsDomaine = formations
     .filter((f) => f.actif && f.domaine_id === resultat.domaine_id)
+    // Exclut les formations purement préparatoires : elles n'apparaissent
+    // qu'en pré-requis dans la chaîne, jamais comme recommandation directe.
+    .filter((f) => !f.est_prerequis_pur)
     .map((f) => {
       const n = niveaux.find((x) => x.id === f.niveau_id);
       return { formation: f, niveau_slug: n?.slug ?? null, ordre: n?.ordre ?? 99 };
@@ -114,7 +117,15 @@ export function chainePrerequis(
     if (!niveauF) return false;
     const niveauUser = niveauxParDomaine.get(f.domaine_id) ?? null;
     if (!niveauUser) return false;
-    return ORDRE_NIVEAUX.indexOf(niveauUser) >= ORDRE_NIVEAUX.indexOf(niveauF);
+    const idxUser = ORDRE_NIVEAUX.indexOf(niveauUser);
+    const idxF = ORDRE_NIVEAUX.indexOf(niveauF);
+    // Formations « purement préparatoires » : leur contenu n'est PAS testé
+    // dans le quiz, donc on ne peut pas inférer qu'un client à leur niveau
+    // les a déjà acquises. Comparaison stricte (>) : il faut avoir dépassé.
+    if (f.est_prerequis_pur) return idxUser > idxF;
+    // Cas normal : si le client a atteint au moins le niveau de la formation
+    // dans le domaine concerné, on considère qu'il en connaît le contenu.
+    return idxUser >= idxF;
   }
 
   function marcher(f: Formation) {

@@ -225,7 +225,6 @@ export interface Database {
   };
 }
 
-export type Domaine = Database["public"]["Tables"]["domaines"]["Row"];
 export type Niveau = Database["public"]["Tables"]["niveaux"]["Row"];
 export type Question = Database["public"]["Tables"]["questions"]["Row"];
 export type Formation = Database["public"]["Tables"]["formations"]["Row"];
