@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import {
-  BarChart3,
   GraduationCap,
   HelpCircle,
   LayoutDashboard,
@@ -11,6 +11,7 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getTranslations } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/brand/Logo";
 
 const t = getTranslations();
 
@@ -32,8 +33,19 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Note : la route /admin/login est interceptée par sa propre page et le
-  // middleware empêche de l'embarquer dans ce layout. On vérifie quand même.
+  // En App Router, ce layout enveloppe TOUTES les routes sous /admin/* y compris
+  // /admin/login. Si on faisait l'auth check + redirect("/admin/login") sur la
+  // page de login elle-même, on créerait une boucle infinie (ERR_TOO_MANY_REDIRECTS).
+  // On lit donc le pathname via les headers Next et on saute auth + sidebar pour
+  // /admin/login (qui se rend nue, sans la chrome admin).
+  const pathname = headers().get("x-pathname") ?? headers().get("x-invoke-path") ?? "";
+  const estPageLogin = pathname.startsWith("/admin/login");
+
+  if (estPageLogin) {
+    // Sur la page de login : pas de check d'auth, pas de sidebar, juste le contenu.
+    return <>{children}</>;
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user }
@@ -46,11 +58,8 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-screen bg-muted/30">
       <aside className="hidden w-64 shrink-0 border-r bg-card md:flex md:flex-col">
-        <div className="flex h-16 items-center gap-2 border-b px-6">
-          <div className="h-7 w-7 rounded-md bg-primary" aria-hidden />
-          <span className="text-sm font-semibold tracking-tight">
-            {t.marque.nom}
-          </span>
+        <div className="flex h-16 items-center border-b px-6">
+          <Logo />
         </div>
         <nav className="flex-1 space-y-1 p-4">
           {navigation.map((item) => (

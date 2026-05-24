@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import {
   GraduationCap,
   HelpCircle,
@@ -32,8 +33,19 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Note : la route /admin/login est interceptée par sa propre page et le
-  // middleware empêche de l'embarquer dans ce layout. On vérifie quand même.
+  // En App Router, ce layout enveloppe TOUTES les routes sous /admin/* y compris
+  // /admin/login. Si on faisait l'auth check + redirect("/admin/login") sur la
+  // page de login elle-même, on créerait une boucle infinie (ERR_TOO_MANY_REDIRECTS).
+  // On lit donc le pathname via les headers Next et on saute auth + sidebar pour
+  // /admin/login (qui se rend nue, sans la chrome admin).
+  const pathname = headers().get("x-pathname") ?? headers().get("x-invoke-path") ?? "";
+  const estPageLogin = pathname.startsWith("/admin/login");
+
+  if (estPageLogin) {
+    // Sur la page de login : pas de check d'auth, pas de sidebar, juste le contenu.
+    return <>{children}</>;
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user }
