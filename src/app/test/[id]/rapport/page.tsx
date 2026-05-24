@@ -152,14 +152,6 @@ function FormationBlock({ reco }: { reco: Reco }) {
                 {reco.formation.description}
               </p>
             ) : null}
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              {reco.formation.duree ? (
-                <span>{t.rapport.duree} : {reco.formation.duree}</span>
-              ) : null}
-              {reco.formation.prix ? (
-                <span>{t.rapport.prix} : {reco.formation.prix}</span>
-              ) : null}
-            </div>
           </div>
           <Button asChild variant="outline" size="sm" className="shrink-0">
             <a
@@ -202,14 +194,6 @@ function FormationBlock({ reco }: { reco: Reco }) {
                           {p.description}
                         </p>
                       ) : null}
-                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        {p.duree ? (
-                          <span>{t.rapport.duree} : {p.duree}</span>
-                        ) : null}
-                        {p.prix ? (
-                          <span>{t.rapport.prix} : {p.prix}</span>
-                        ) : null}
-                      </div>
                     </div>
                   </div>
                   <Button asChild variant="outline" size="sm" className="shrink-0">

@@ -311,13 +311,6 @@ function ChaineRecoPDF({ chaine }: { chaine: Formation[] }) {
                 {p.description}
               </Text>
             ) : null}
-            {p.duree || p.prix ? (
-              <Text style={styles.prereqMeta}>
-                {p.duree ? `Durée : ${p.duree}` : ""}
-                {p.duree && p.prix ? " • " : ""}
-                {p.prix ? `Prix : ${p.prix}` : ""}
-              </Text>
-            ) : null}
             <Link src={p.url_inscription} style={[styles.recoUrl, { color: COULEUR_AMBRE_TEXT }]}>
               {p.url_inscription}
             </Link>
@@ -394,11 +387,6 @@ export function RapportPDF({ donnees }: { donnees: DonneesRapport }) {
                         {reco.formation.description}
                       </Text>
                     ) : null}
-                    <Text style={styles.recoMeta}>
-                      {reco.formation.duree ? `Durée : ${reco.formation.duree}` : ""}
-                      {reco.formation.duree && reco.formation.prix ? " • " : ""}
-                      {reco.formation.prix ? `Prix : ${reco.formation.prix}` : ""}
-                    </Text>
                     <Link src={reco.formation.url_inscription} style={styles.recoUrl}>
                       {reco.formation.url_inscription}
                     </Link>

@@ -120,9 +120,11 @@ export default function HomePage() {
         <div className="container-app py-10">
           <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
             <div className="flex items-center gap-3">
-              <Logo className="brightness-0 invert" />
+              <span className="text-base font-semibold tracking-tight text-primary-foreground">
+                Le CFO Masqué
+              </span>
               <span className="text-xs text-primary-foreground/70">
-                © {new Date().getFullYear()} Le CFO Masqué Inc.
+                © {new Date().getFullYear()} Inc.
               </span>
             </div>
             <div className="flex items-center gap-4 text-primary-foreground/80">
