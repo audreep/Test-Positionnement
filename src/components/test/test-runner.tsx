@@ -1,0 +1,139 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { getTranslations, tr } from "@/lib/i18n";
+import { QuestionView } from "./question-view";
+import type { NiveauSlug } from "@/lib/supabase/types";
+
+const t = getTranslations();
+
+interface VueClient {
+  test_id: string;
+  statut: "en_cours" | "complete";
+  domaine_courant: {
+    id: string;
+    nom: string;
+    slug: string;
+    index: number;
+    total: number;
+  } | null;
+  niveau_courant: NiveauSlug | null;
+  question: {
+    id: string;
+    type: "choix_multiple" | "vrai_faux" | "formule" | "cas_pratique";
+    enonce: string;
+    options: Array<{ cle: string; texte: string }> | null;
+  } | null;
+  numero_question_dans_niveau: number;
+}
+
+interface Props {
+  vueInitiale: VueClient;
+  totalDomaines: number;
+}
+
+export function TestRunner({ vueInitiale }: Props) {
+  const router = useRouter();
+  const [vue, setVue] = useState<VueClient>(vueInitiale);
+  const [isPending, startTransition] = useTransition();
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [debutQuestion, setDebutQuestion] = useState(Date.now());
+
+  useEffect(() => { setDebutQuestion(Date.now()); }, [vue.question?.id]);
+
+  useEffect(() => {
+    if (vue.statut === "complete") {
+      router.replace("/test/" + vue.test_id + "/rapport");
+    }
+  }, [vue.statut, vue.test_id, router]);
+
+  function envoyerReponse(reponse: string) {
+    if (!vue.question || !vue.domaine_courant) return;
+    setErreur(null);
+    const temps_passe_ms = Date.now() - debutQuestion;
+    startTransition(async () => {
+      const res = await fetch("/api/test/" + vue.test_id + "/answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question_id: vue.question!.id,
+          reponse_donnee: reponse,
+          temps_passe_ms
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErreur(data.error ?? t.commun.erreur);
+        return;
+      }
+      setVue(data);
+    });
+  }
+
+  if (vue.statut === "complete") {
+    return (
+      <main className="container-narrow flex min-h-screen items-center justify-center py-12">
+        <Card className="w-full">
+          <CardContent className="py-12 text-center">
+            <p className="text-lg font-semibold">{t.test.fin_titre}</p>
+            <p className="mt-2 text-sm text-muted-foreground">Redirection vers votre rapport...</p>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
+  if (!vue.domaine_courant || !vue.question) {
+    return (
+      <main className="container-narrow flex min-h-screen items-center justify-center py-12">
+        <Card className="w-full"><CardContent className="py-12 text-center">{t.commun.chargement}</CardContent></Card>
+      </main>
+    );
+  }
+
+  const pourcentage = Math.round(
+    ((vue.domaine_courant.index - 1) / vue.domaine_courant.total) * 100
+  );
+
+  return (
+    <main className="container-narrow min-h-screen py-8">
+      <header className="mb-6 space-y-3">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            {tr(t.test.progression, {
+              actuel: vue.domaine_courant.index,
+              total: vue.domaine_courant.total
+            })}
+          </span>
+          <Badge variant="outline" className="capitalize">
+            {t.niveaux[vue.niveau_courant as keyof typeof t.niveaux] ?? vue.niveau_courant}
+          </Badge>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-full bg-primary transition-all" style={{ width: pourcentage + "%" }} aria-hidden />
+        </div>
+      </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">{vue.domaine_courant.nom}</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {tr(t.test.question_numero, { numero: vue.numero_question_dans_niveau })}
+            {" "}sur 3 - Niveau {t.niveaux[vue.niveau_courant as keyof typeof t.niveaux]}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <QuestionView question={vue.question} disabled={isPending} onSubmit={envoyerReponse} />
+          {erreur ? <p className="mt-3 text-sm text-destructive">{erreur}</p> : null}
+        </CardContent>
+      </Card>
+
+      <p className="mt-6 text-center text-xs text-muted-foreground">
+        Aucun retour en arrière n&apos;est possible : confirmez chaque réponse avant de passer à la suivante.
+      </p>
+    </main>
+  );
+}

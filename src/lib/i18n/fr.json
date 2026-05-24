@@ -1,0 +1,119 @@
+{
+  "marque": {
+    "nom": "Le CFO Masqué",
+    "tagline": "Maîtrisez l'informatique décisionnelle"
+  },
+  "test": {
+    "titre": "Test de positionnement Excel",
+    "sous_titre": "Évaluez vos compétences en 15 à 30 minutes et recevez des recommandations personnalisées.",
+    "duree_estimee": "15 à 30 minutes",
+    "commencer": "Commencer le test",
+    "continuer": "Continuer",
+    "valider": "Valider et poursuivre",
+    "progression": "Domaine {actuel} sur {total}",
+    "question_numero": "Question {numero}",
+    "transition_titre": "Section suivante",
+    "transition_demarrer": "Démarrer cette section",
+    "fin_titre": "Test complété !",
+    "fin_message": "Voici votre rapport de positionnement personnalisé.",
+    "deja_complete_titre": "Vous avez déjà complété ce test",
+    "deja_complete_message": "Une seule passation par adresse courriel est permise. Communiquez avec nous pour réinitialiser votre test si nécessaire."
+  },
+  "intake": {
+    "titre": "Vos informations",
+    "sous_titre": "Quelques renseignements avant de commencer.",
+    "prenom": "Prénom",
+    "nom": "Nom",
+    "courriel": "Courriel",
+    "source": "Comment avez-vous entendu parler de ce test ?",
+    "source_choix": {
+      "google": "Recherche Google",
+      "linkedin": "LinkedIn",
+      "reference": "Référence d'un collègue",
+      "infolettre": "Infolettre Le CFO Masqué",
+      "autre": "Autre"
+    },
+    "auto_evaluation_titre": "Comment évaluez-vous votre niveau actuel ?",
+    "auto_evaluation_sous_titre": "Pour chacun des domaines ci-dessous, indiquez où vous vous situez. Le test ajustera la difficulté en conséquence. Vous gagnerez du temps !",
+    "auto_evaluation_choix": {
+      "novice": "Novice",
+      "a_laise": "À l'aise",
+      "expert": "Expert",
+      "skip": "Je ne connais pas"
+    },
+    "auto_evaluation_aide": {
+      "novice": "Quelques notions de base",
+      "a_laise": "J'utilise régulièrement",
+      "expert": "Maîtrise approfondie",
+      "skip": "Niveau Débutant attribué d'office"
+    },
+    "non_pertinent_label": "Ce domaine ne m'intéresse pas",
+    "non_pertinent_aide": "Le domaine sera complètement exclu du test et du rapport",
+    "consentement_titre": "Consentement (Loi 25 – Québec)",
+    "consentement_marketing": "J'accepte que mes informations soient utilisées par Le CFO Masqué pour me communiquer mon rapport et me proposer des formations pertinentes.",
+    "consentement_politique": "J'ai pris connaissance de la {lien_politique}.",
+    "lien_politique": "politique de confidentialité",
+    "champ_requis": "Ce champ est obligatoire",
+    "courriel_invalide": "Veuillez saisir une adresse courriel valide",
+    "auto_eval_requise": "Veuillez évaluer votre niveau pour chaque domaine"
+  },
+  "rapport": {
+    "titre": "Votre rapport de positionnement Excel",
+    "telecharger_pdf": "Télécharger le rapport en PDF",
+    "score_global": "Score global",
+    "scores_par_domaine": "Niveau atteint par domaine",
+    "recommandations": "Formations recommandées",
+    "aucune_recommandation": "Bravo ! Vous avez atteint le niveau Expert dans tous les domaines évalués. Aucune formation supplémentaire n'est suggérée — vous êtes au sommet du parcours.",
+    "non_evalue": "Non évalué",
+    "voir_formation": "Voir la formation",
+    "duree": "Durée",
+    "prix": "Prix"
+  },
+  "niveaux": {
+    "debutant": "Débutant",
+    "intermediaire": "Intermédiaire",
+    "avance": "Avancé",
+    "expert": "Expert",
+    "non_evalue": "Non évalué"
+  },
+  "domaines": {
+    "formules": "Formules",
+    "tableaux-croises-dynamiques": "Tableaux croisés dynamiques",
+    "modelisation-financiere": "Modélisation financière",
+    "vba": "VBA",
+    "power-query": "Power Query",
+    "power-pivot": "Power Pivot"
+  },
+  "admin": {
+    "connexion_titre": "Connexion administrateur",
+    "courriel": "Courriel",
+    "mot_de_passe": "Mot de passe",
+    "se_connecter": "Se connecter",
+    "deconnexion": "Déconnexion",
+    "tableau_de_bord": "Tableau de bord",
+    "questions": "Questions",
+    "formations": "Formations",
+    "clients": "Clients",
+    "exporter_csv": "Exporter en CSV",
+    "ajouter": "Ajouter",
+    "modifier": "Modifier",
+    "supprimer": "Supprimer",
+    "desactiver": "Désactiver",
+    "activer": "Activer",
+    "reinitialiser_test": "Réinitialiser le test",
+    "supprimer_client": "Supprimer le client et toutes ses données",
+    "confirmer_suppression": "Confirmer la suppression",
+    "stats_nb_clients": "Nombre de clients",
+    "stats_nb_tests_complets": "Tests complétés",
+    "stats_score_moyen": "Score moyen",
+    "stats_taux_completion": "Taux de complétion"
+  },
+  "commun": {
+    "annuler": "Annuler",
+    "enregistrer": "Enregistrer",
+    "retour": "Retour",
+    "chargement": "Chargement…",
+    "erreur": "Une erreur est survenue",
+    "succes": "Opération réussie"
+  }
+}

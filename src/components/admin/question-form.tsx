@@ -1,0 +1,294 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import type {
+  Domaine,
+  Niveau,
+  Question,
+  QuestionOption,
+  QuestionType
+} from "@/lib/supabase/types";
+
+interface Props {
+  domaines: Pick<Domaine, "id" | "nom">[];
+  niveaux: Pick<Niveau, "id" | "nom" | "ordre">[];
+  initiale?: Question;
+}
+
+const TYPES: { value: QuestionType; label: string }[] = [
+  { value: "choix_multiple", label: "Choix multiple" },
+  { value: "vrai_faux", label: "Vrai / Faux" },
+  { value: "formule", label: "Formule (regex)" },
+  { value: "cas_pratique", label: "Cas pratique (choix multiple, énoncé long)" }
+];
+
+export function QuestionForm({ domaines, niveaux, initiale }: Props) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  const [domaineId, setDomaineId] = useState(initiale?.domaine_id ?? domaines[0]?.id ?? "");
+  const [niveauId, setNiveauId] = useState(initiale?.niveau_id ?? niveaux[0]?.id ?? "");
+  const [type, setType] = useState<QuestionType>(initiale?.type ?? "choix_multiple");
+  const [enonce, setEnonce] = useState(initiale?.enonce ?? "");
+  const [options, setOptions] = useState<QuestionOption[]>(
+    initiale?.options ?? [
+      { cle: "a", texte: "" },
+      { cle: "b", texte: "" },
+      { cle: "c", texte: "" },
+      { cle: "d", texte: "" }
+    ]
+  );
+  const [bonneReponse, setBonneReponse] = useState(initiale?.bonne_reponse ?? "");
+  const [regex, setRegex] = useState((initiale?.regex_acceptees ?? []).join("\n"));
+  const [explication, setExplication] = useState(initiale?.explication ?? "");
+  const [ordre, setOrdre] = useState(initiale?.ordre ?? 0);
+  const [actif, setActif] = useState(initiale?.actif ?? true);
+
+  const utiliseOptions = type === "choix_multiple" || type === "cas_pratique";
+  const utiliseRegex = type === "formule";
+  const utiliseVraiFaux = type === "vrai_faux";
+
+  function setOption(i: number, champ: keyof QuestionOption, val: string) {
+    setOptions((arr) =>
+      arr.map((o, idx) => (idx === i ? { ...o, [champ]: val } : o))
+    );
+  }
+
+  function ajouterOption() {
+    const prochaineCle = String.fromCharCode("a".charCodeAt(0) + options.length);
+    setOptions((arr) => [...arr, { cle: prochaineCle, texte: "" }]);
+  }
+
+  function retirerOption(i: number) {
+    setOptions((arr) => arr.filter((_, idx) => idx !== i));
+  }
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErreur(null);
+
+    const payload = {
+      domaine_id: domaineId,
+      niveau_id: niveauId,
+      type,
+      enonce,
+      options: utiliseOptions ? options.filter((o) => o.texte.trim().length > 0) : null,
+      bonne_reponse: utiliseVraiFaux || utiliseOptions ? bonneReponse : null,
+      regex_acceptees: utiliseRegex
+        ? regex
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : null,
+      explication: explication.trim() || null,
+      ordre,
+      actif
+    };
+
+    startTransition(async () => {
+      const url = initiale
+        ? `/api/admin/questions/${initiale.id}`
+        : "/api/admin/questions";
+      const method = initiale ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErreur(data.error ?? "Erreur d'enregistrement.");
+        return;
+      }
+      router.push("/admin/questions");
+      router.refresh();
+    });
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Domaine</Label>
+          <Select value={domaineId} onValueChange={setDomaineId}>
+            <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+            <SelectContent>
+              {domaines.map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.nom}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Niveau</Label>
+          <Select value={niveauId} onValueChange={setNiveauId}>
+            <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+            <SelectContent>
+              {niveaux.sort((a,b)=>a.ordre-b.ordre).map((n) => (
+                <SelectItem key={n.id} value={n.id}>{n.nom}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Type de question</Label>
+        <Select value={type} onValueChange={(v) => setType(v as QuestionType)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="enonce">Énoncé</Label>
+        <Textarea
+          id="enonce"
+          rows={4}
+          value={enonce}
+          onChange={(e) => setEnonce(e.target.value)}
+          required
+        />
+      </div>
+
+      {utiliseOptions ? (
+        <div className="space-y-3 rounded-md border bg-muted/30 p-4">
+          <Label>Options de réponse</Label>
+          {options.map((o, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                className="w-16"
+                value={o.cle}
+                onChange={(e) => setOption(i, "cle", e.target.value)}
+                placeholder="clé"
+              />
+              <Input
+                className="flex-1"
+                value={o.texte}
+                onChange={(e) => setOption(i, "texte", e.target.value)}
+                placeholder="Texte de l'option"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => retirerOption(i)}
+              >
+                Retirer
+              </Button>
+            </div>
+          ))}
+          <Button type="button" variant="outline" size="sm" onClick={ajouterOption}>
+            Ajouter une option
+          </Button>
+
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="bonne">Clé de la bonne réponse</Label>
+            <Input
+              id="bonne"
+              value={bonneReponse}
+              onChange={(e) => setBonneReponse(e.target.value)}
+              placeholder="ex: a"
+              required
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {utiliseVraiFaux ? (
+        <div className="space-y-2">
+          <Label>Bonne réponse</Label>
+          <Select value={bonneReponse} onValueChange={setBonneReponse}>
+            <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="vrai">Vrai</SelectItem>
+              <SelectItem value="faux">Faux</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+
+      {utiliseRegex ? (
+        <div className="space-y-2">
+          <Label htmlFor="regex">
+            Regex acceptées (une par ligne, sans délimiteurs)
+          </Label>
+          <Textarea
+            id="regex"
+            rows={4}
+            value={regex}
+            onChange={(e) => setRegex(e.target.value)}
+            placeholder={"^=SOMME\\(.+\\)$\n^=SUM\\(.+\\)$"}
+          />
+          <p className="text-xs text-muted-foreground">
+            La comparaison se fait en insensible à la casse, après suppression
+            des espaces dans la formule saisie par le client.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
+        <Label htmlFor="expl">Explication (admin uniquement)</Label>
+        <Textarea
+          id="expl"
+          rows={2}
+          value={explication}
+          onChange={(e) => setExplication(e.target.value)}
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="ordre">Ordre d&apos;affichage</Label>
+          <Input
+            id="ordre"
+            type="number"
+            value={ordre}
+            onChange={(e) => setOrdre(Number(e.target.value))}
+          />
+        </div>
+        <div className="flex items-end gap-2">
+          <Checkbox
+            id="actif"
+            checked={actif}
+            onCheckedChange={(v) => setActif(Boolean(v))}
+          />
+          <Label htmlFor="actif">Question active (utilisée dans le test)</Label>
+        </div>
+      </div>
+
+      {erreur ? <p className="text-sm text-destructive">{erreur}</p> : null}
+
+      <div className="flex gap-2">
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Enregistrement…" : "Enregistrer"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.push("/admin/questions")}
+        >
+          Annuler
+        </Button>
+      </div>
+    </form>
+  );
+}

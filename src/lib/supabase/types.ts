@@ -1,0 +1,231 @@
+/**
+ * Types de la base de données.
+ *
+ * En conditions réelles on génère ce fichier avec :
+ *   npx supabase gen types typescript --project-id <id> --schema public > src/lib/supabase/types.ts
+ *
+ * En attendant, voici une version manuelle qui couvre le schéma de Phase 1.
+ */
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [k: string]: Json }
+  | Json[];
+
+export type NiveauSlug = "debutant" | "intermediaire" | "avance" | "expert";
+export type DomaineSlug =
+  | "formules"
+  | "tableaux-croises-dynamiques"
+  | "modelisation-financiere"
+  | "vba"
+  | "power-query"
+  | "power-pivot";
+export type SourceAcquisition =
+  | "google"
+  | "linkedin"
+  | "reference"
+  | "infolettre"
+  | "autre";
+export type QuestionType =
+  | "choix_multiple"
+  | "vrai_faux"
+  | "formule"
+  | "cas_pratique";
+export type StatutTest = "en_cours" | "complete" | "abandonne";
+
+export interface QuestionOption {
+  cle: string;
+  texte: string;
+}
+
+export interface Database {
+  public: {
+    Tables: {
+      domaines: {
+        Row: {
+          id: string;
+          slug: DomaineSlug | string;
+          nom: string;
+          description: string | null;
+          ordre: number;
+          actif: boolean;
+          cree_le: string;
+        };
+        Insert: Partial<Omit<Database["public"]["Tables"]["domaines"]["Row"], "id" | "cree_le">> & {
+          slug: string;
+          nom: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["domaines"]["Row"]>;
+      };
+      niveaux: {
+        Row: {
+          id: string;
+          slug: NiveauSlug;
+          nom: string;
+          ordre: number;
+          cree_le: string;
+        };
+        Insert: { slug: NiveauSlug; nom: string; ordre: number };
+        Update: Partial<Database["public"]["Tables"]["niveaux"]["Row"]>;
+      };
+      questions: {
+        Row: {
+          id: string;
+          domaine_id: string;
+          niveau_id: string;
+          type: QuestionType;
+          enonce: string;
+          options: QuestionOption[] | null;
+          bonne_reponse: string | null;
+          regex_acceptees: string[] | null;
+          explication: string | null;
+          ordre: number;
+          actif: boolean;
+          cree_le: string;
+          mise_a_jour_le: string;
+        };
+        Insert: {
+          domaine_id: string;
+          niveau_id: string;
+          type: QuestionType;
+          enonce: string;
+          options?: QuestionOption[] | null;
+          bonne_reponse?: string | null;
+          regex_acceptees?: string[] | null;
+          explication?: string | null;
+          ordre?: number;
+          actif?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["questions"]["Insert"]>;
+      };
+      formations: {
+        Row: {
+          id: string;
+          titre: string;
+          domaine_id: string;
+          niveau_id: string;
+          duree: string | null;
+          prix: string | null;
+          url_inscription: string;
+          description: string | null;
+          actif: boolean;
+          // Ordre logique d'execution : du pre-requis le plus en amont au plus
+          // immediat. La chaine transitive est resolue cote application.
+          prerequis_ids: string[];
+          cree_le: string;
+          mise_a_jour_le: string;
+        };
+        Insert: {
+          titre: string;
+          domaine_id: string;
+          niveau_id: string;
+          duree?: string | null;
+          prix?: string | null;
+          url_inscription: string;
+          description?: string | null;
+          actif?: boolean;
+          prerequis_ids?: string[];
+        };
+        Update: Partial<Database["public"]["Tables"]["formations"]["Insert"]>;
+      };
+      clients: {
+        Row: {
+          id: string;
+          prenom: string;
+          nom: string;
+          courriel: string;
+          courriel_normalise: string;
+          source_acquisition: SourceAcquisition;
+          consentement_marketing: boolean;
+          date_consentement: string;
+          cree_le: string;
+        };
+        Insert: {
+          prenom: string;
+          nom: string;
+          courriel: string;
+          source_acquisition: SourceAcquisition;
+          consentement_marketing: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["clients"]["Insert"]>;
+      };
+      tests: {
+        Row: {
+          id: string;
+          client_id: string;
+          statut: StatutTest;
+          date_debut: string;
+          date_fin: string | null;
+          score_global: number | null;
+          donnees_etat: Json;
+          cree_le: string;
+          mise_a_jour_le: string;
+        };
+        Insert: {
+          client_id: string;
+          statut?: StatutTest;
+          donnees_etat?: Json;
+        };
+        Update: Partial<Database["public"]["Tables"]["tests"]["Row"]>;
+      };
+      reponses: {
+        Row: {
+          id: string;
+          test_id: string;
+          question_id: string;
+          reponse_donnee: string | null;
+          correct: boolean;
+          temps_passe_ms: number | null;
+          cree_le: string;
+        };
+        Insert: {
+          test_id: string;
+          question_id: string;
+          reponse_donnee?: string | null;
+          correct: boolean;
+          temps_passe_ms?: number | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["reponses"]["Insert"]>;
+      };
+      scores_par_domaine: {
+        Row: {
+          id: string;
+          test_id: string;
+          domaine_id: string;
+          niveau_atteint_id: string | null;
+          pourcentage: number;
+          nb_reponses: number;
+          nb_correctes: number;
+          passe: boolean;
+          cree_le: string;
+        };
+        Insert: {
+          test_id: string;
+          domaine_id: string;
+          niveau_atteint_id?: string | null;
+          pourcentage: number;
+          nb_reponses: number;
+          nb_correctes: number;
+          passe?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["scores_par_domaine"]["Insert"]>;
+      };
+    };
+    Views: { [key: string]: never };
+    Functions: { [key: string]: never };
+    Enums: { [key: string]: never };
+    CompositeTypes: { [key: string]: never };
+  };
+}
+
+export type Domaine = Database["public"]["Tables"]["domaines"]["Row"];
+export type Niveau = Database["public"]["Tables"]["niveaux"]["Row"];
+export type Question = Database["public"]["Tables"]["questions"]["Row"];
+export type Formation = Database["public"]["Tables"]["formations"]["Row"];
+export type Client = Database["public"]["Tables"]["clients"]["Row"];
+export type Test = Database["public"]["Tables"]["tests"]["Row"];
+export type Reponse = Database["public"]["Tables"]["reponses"]["Row"];
+export type ScoreParDomaine = Database["public"]["Tables"]["scores_par_domaine"]["Row"];

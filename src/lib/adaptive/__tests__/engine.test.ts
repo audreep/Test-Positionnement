@@ -1,0 +1,352 @@
+import { describe, it, expect } from "vitest";
+import {
+  decisionApresReponse,
+  domaineSuivant,
+  etatInitial,
+  finaliserDomaine,
+  mettreAJourBornes,
+  niveauDeDepart,
+  ORDRE_NIVEAUX,
+  piocheQuestion,
+  QUESTIONS_PAR_NIVEAU,
+  reponseEstCorrecte,
+  SEUIL_REUSSITE,
+  type EtatTest
+} from "../engine";
+import type { NiveauSlug, Question } from "@/lib/supabase/types";
+
+const DOMAINES = [{ id: "d1" }, { id: "d2" }, { id: "d3" }];
+
+function reponses(suite: boolean[]) {
+  return suite.map((c, i) => ({ question_id: "q" + i, correct: c }));
+}
+
+function questionFactice(over: Partial<Question> = {}): Question {
+  return {
+    id: "q",
+    domaine_id: "d",
+    niveau_id: "n",
+    type: "choix_multiple",
+    enonce: "?",
+    options: null,
+    bonne_reponse: "a",
+    regex_acceptees: null,
+    explication: null,
+    ordre: 0,
+    actif: true,
+    cree_le: "",
+    mise_a_jour_le: "",
+    ...over
+  };
+}
+
+function etatA(niveau: NiveauSlug, partial: Partial<EtatTest> = {}): EtatTest {
+  return {
+    ...etatInitial(),
+    niveau_actuel: niveau,
+    ...partial
+  };
+}
+
+// =============================================================================
+// Constantes & init
+// =============================================================================
+describe("constantes", () => {
+  it("seuil 2/3 et 4 niveaux ordonnés", () => {
+    expect(SEUIL_REUSSITE).toBe(2);
+    expect(QUESTIONS_PAR_NIVEAU).toBe(3);
+    expect(ORDRE_NIVEAUX).toEqual(["debutant", "intermediaire", "avance", "expert"]);
+  });
+});
+
+describe("niveauDeDepart", () => {
+  it("mappe novice → Débutant", () => {
+    expect(niveauDeDepart("novice")).toBe("debutant");
+  });
+  it("mappe à_l_aise → Intermédiaire", () => {
+    expect(niveauDeDepart("a_laise")).toBe("intermediaire");
+  });
+  it("mappe expert → Avancé (l'Expert réel n'est atteint que par promotion)", () => {
+    expect(niveauDeDepart("expert")).toBe("avance");
+  });
+  it("mappe skip → null (Débutant attribué d'office, aucune question posée)", () => {
+    expect(niveauDeDepart("skip")).toBeNull();
+  });
+  it("mappe non_pertinent → null (domaine exclu, aucune question posée)", () => {
+    expect(niveauDeDepart("non_pertinent")).toBeNull();
+  });
+});
+
+describe("etatInitial", () => {
+  it("démarre à Débutant sans bornes ni questions", () => {
+    const e = etatInitial({ d1: "novice" });
+    expect(e.niveau_actuel).toBe("debutant");
+    expect(e.domaine_actuel_idx).toBe(0);
+    expect(e.niveau_max_reussi).toBeNull();
+    expect(e.niveau_min_echoue).toBeNull();
+    expect(e.auto_evaluations).toEqual({ d1: "novice" });
+  });
+});
+
+// =============================================================================
+// Décision après réponse (bidirectionnel)
+// =============================================================================
+describe("decisionApresReponse — continue jusqu'à 3 réponses", () => {
+  it("retourne 'poser_question' tant que < 3 réponses", () => {
+    const e = etatA("intermediaire", { reponses_niveau_courant: reponses([true]) });
+    expect(decisionApresReponse(e).type).toBe("poser_question");
+  });
+});
+
+describe("decisionApresReponse — succès (≥2/3)", () => {
+  it("monte d'un niveau si pas de plafond atteint et pas d'échec adjacent", () => {
+    const e = etatA("intermediaire", { reponses_niveau_courant: reponses([true, true, false]) });
+    const d = decisionApresReponse(e);
+    expect(d.type).toBe("monter_niveau");
+    if (d.type === "monter_niveau") {
+      expect(d.depuis).toBe("intermediaire");
+      expect(d.vers).toBe("avance");
+    }
+  });
+
+  it("finalise au plafond si réussite à Expert", () => {
+    const e = etatA("expert", { reponses_niveau_courant: reponses([true, true, true]) });
+    const d = decisionApresReponse(e);
+    expect(d.type).toBe("finaliser_domaine");
+    if (d.type === "finaliser_domaine") expect(d.raison).toBe("plafond");
+  });
+
+  it("finalise par convergence si on a déjà échoué au niveau juste au-dessus", () => {
+    // Scénario : a_laise → fail Avancé (descend), pass Intermédiaire → arrêt
+    const e = etatA("intermediaire", {
+      niveau_min_echoue: "avance",
+      reponses_niveau_courant: reponses([true, true, false])
+    });
+    const d = decisionApresReponse(e);
+    expect(d.type).toBe("finaliser_domaine");
+    if (d.type === "finaliser_domaine") expect(d.raison).toBe("convergence");
+  });
+});
+
+describe("decisionApresReponse — échec (<2/3)", () => {
+  it("descend d'un niveau si pas de plancher atteint et pas de succès adjacent", () => {
+    const e = etatA("avance", { reponses_niveau_courant: reponses([false, false, true]) });
+    const d = decisionApresReponse(e);
+    expect(d.type).toBe("descendre_niveau");
+    if (d.type === "descendre_niveau") {
+      expect(d.depuis).toBe("avance");
+      expect(d.vers).toBe("intermediaire");
+    }
+  });
+
+  it("finalise au plancher si échec dès Débutant", () => {
+    const e = etatA("debutant", { reponses_niveau_courant: reponses([false, false, true]) });
+    const d = decisionApresReponse(e);
+    expect(d.type).toBe("finaliser_domaine");
+    if (d.type === "finaliser_domaine") expect(d.raison).toBe("plancher");
+  });
+
+  it("finalise par convergence si on a déjà réussi au niveau juste en-dessous", () => {
+    // Scénario : novice → pass Débutant (monte), fail Intermédiaire → arrêt à Débutant
+    const e = etatA("intermediaire", {
+      niveau_max_reussi: "debutant",
+      reponses_niveau_courant: reponses([false, false, true])
+    });
+    const d = decisionApresReponse(e);
+    expect(d.type).toBe("finaliser_domaine");
+    if (d.type === "finaliser_domaine") expect(d.raison).toBe("convergence");
+  });
+});
+
+// =============================================================================
+// Mise à jour des bornes
+// =============================================================================
+describe("mettreAJourBornes", () => {
+  it("met à jour niveau_max_reussi si on réussit plus haut", () => {
+    const e = etatA("intermediaire", { niveau_max_reussi: "debutant" });
+    const b = mettreAJourBornes(e, true);
+    expect(b.niveau_max_reussi).toBe("intermediaire");
+    expect(b.niveau_min_echoue).toBeNull();
+  });
+
+  it("ne régresse pas niveau_max_reussi si on réussit plus bas", () => {
+    const e = etatA("debutant", { niveau_max_reussi: "avance" });
+    const b = mettreAJourBornes(e, true);
+    expect(b.niveau_max_reussi).toBe("avance");
+  });
+
+  it("met à jour niveau_min_echoue si on échoue plus bas", () => {
+    const e = etatA("intermediaire", { niveau_min_echoue: "expert" });
+    const b = mettreAJourBornes(e, false);
+    expect(b.niveau_min_echoue).toBe("intermediaire");
+  });
+
+  it("ne régresse pas niveau_min_echoue si on échoue plus haut", () => {
+    const e = etatA("avance", { niveau_min_echoue: "intermediaire" });
+    const b = mettreAJourBornes(e, false);
+    expect(b.niveau_min_echoue).toBe("intermediaire");
+  });
+});
+
+// =============================================================================
+// finaliserDomaine
+// =============================================================================
+describe("finaliserDomaine", () => {
+  it("passe = true et niveau null si le domaine a été skipped", () => {
+    const r = finaliserDomaine("d1", [], null, true);
+    expect(r.passe).toBe(true);
+    expect(r.niveau_atteint).toBeNull();
+    expect(r.pourcentage).toBe(0);
+  });
+
+  it("retourne niveau_max_reussi sinon", () => {
+    const r = finaliserDomaine("d1", reponses([true, true, false]), "intermediaire", false);
+    expect(r.niveau_atteint).toBe("intermediaire");
+    expect(r.passe).toBe(false);
+  });
+
+  it("niveau = null si max_reussi est null (échec dès Débutant)", () => {
+    const r = finaliserDomaine("d1", reponses([false, false, true]), null, false);
+    expect(r.niveau_atteint).toBeNull();
+  });
+
+  it("calcule pourcentage et nb réponses agrégés", () => {
+    const r = finaliserDomaine("d1", reponses([true, true, true, true, true, false]), "intermediaire", false);
+    expect(r.nb_reponses).toBe(6);
+    expect(r.nb_correctes).toBe(5);
+    expect(r.pourcentage).toBe(83);
+  });
+});
+
+// =============================================================================
+// domaineSuivant
+// =============================================================================
+describe("domaineSuivant", () => {
+  it("avance d'un domaine et remet bornes/niveau", () => {
+    const e = etatA("expert", { niveau_max_reussi: "avance", niveau_min_echoue: "expert" });
+    const { fini, nouvel_etat } = domaineSuivant(e, DOMAINES);
+    expect(fini).toBe(false);
+    expect(nouvel_etat.domaine_actuel_idx).toBe(1);
+    expect(nouvel_etat.niveau_actuel).toBe("debutant");
+    expect(nouvel_etat.niveau_max_reussi).toBeNull();
+    expect(nouvel_etat.niveau_min_echoue).toBeNull();
+  });
+
+  it("signale fini quand on dépasse le dernier domaine", () => {
+    const e = etatA("expert", { domaine_actuel_idx: DOMAINES.length - 1 });
+    const { fini } = domaineSuivant(e, DOMAINES);
+    expect(fini).toBe(true);
+  });
+});
+
+// =============================================================================
+// piocheQuestion
+// =============================================================================
+describe("piocheQuestion", () => {
+  it("retourne null sur banque vide", () => {
+    expect(piocheQuestion([], [])).toBeNull();
+  });
+
+  it("évite les questions déjà tirées quand possible", () => {
+    const banque = [questionFactice({ id: "q1" }), questionFactice({ id: "q2" }), questionFactice({ id: "q3" })];
+    const c = piocheQuestion(banque, ["q1", "q2"]);
+    expect(c?.id).toBe("q3");
+  });
+
+  it("accepte répétition si banque épuisée", () => {
+    const banque = [questionFactice({ id: "q1" })];
+    expect(piocheQuestion(banque, ["q1"])?.id).toBe("q1");
+  });
+});
+
+// =============================================================================
+// reponseEstCorrecte
+// =============================================================================
+describe("reponseEstCorrecte", () => {
+  it("QCM insensible à la casse", () => {
+    const q = questionFactice({ type: "choix_multiple", bonne_reponse: "A" });
+    expect(reponseEstCorrecte(q, "a")).toBe(true);
+    expect(reponseEstCorrecte(q, "B")).toBe(false);
+  });
+
+  it("vrai/faux", () => {
+    const q = questionFactice({ type: "vrai_faux", bonne_reponse: "vrai" });
+    expect(reponseEstCorrecte(q, "Vrai")).toBe(true);
+    expect(reponseEstCorrecte(q, "faux")).toBe(false);
+  });
+
+  it("réponse vide ou null → false", () => {
+    const q = questionFactice({ type: "choix_multiple", bonne_reponse: "a" });
+    expect(reponseEstCorrecte(q, "")).toBe(false);
+    expect(reponseEstCorrecte(q, null)).toBe(false);
+    expect(reponseEstCorrecte(q, "   ")).toBe(false);
+  });
+
+  it("formule via regex, insensible à la casse + espaces ignorés", () => {
+    const q = questionFactice({
+      type: "formule",
+      regex_acceptees: ["^=SOMME\\(.+\\)$", "^=SUM\\(.+\\)$"]
+    });
+    expect(reponseEstCorrecte(q, "=somme(A1:A10)")).toBe(true);
+    expect(reponseEstCorrecte(q, "=SUM(A1:A10)")).toBe(true);
+    expect(reponseEstCorrecte(q, "  =SOMME( A1 : A10 )  ")).toBe(true);
+    expect(reponseEstCorrecte(q, "=MOYENNE(A1:A10)")).toBe(false);
+  });
+
+  it("formule fallback bonne_reponse si pas de regex", () => {
+    const q = questionFactice({
+      type: "formule",
+      regex_acceptees: null,
+      bonne_reponse: "=SOMME(A1:A10)"
+    });
+    expect(reponseEstCorrecte(q, "=somme(a1:a10)")).toBe(true);
+    expect(reponseEstCorrecte(q, "=SOMME(A1:A11)")).toBe(false);
+  });
+});
+
+// =============================================================================
+// Scénarios complets (simulation de la convergence)
+// =============================================================================
+describe("scénario : self-eval Intermédiaire, réussit Int puis échoue Avancé → convergence à Int", () => {
+  it("converge correctement", () => {
+    // Étape 1 : Int → 3/3 → monter
+    let e = etatA("intermediaire", { reponses_niveau_courant: reponses([true, true, true]) });
+    let d = decisionApresReponse(e);
+    expect(d.type).toBe("monter_niveau");
+    // Maj bornes pour ce bloc réussi
+    let b = mettreAJourBornes(e, true);
+    expect(b.niveau_max_reussi).toBe("intermediaire");
+
+    // Étape 2 : Avancé → 1/3 → finaliser par convergence
+    e = etatA("avance", {
+      niveau_max_reussi: "intermediaire",
+      reponses_niveau_courant: reponses([true, false, false])
+    });
+    d = decisionApresReponse(e);
+    expect(d.type).toBe("finaliser_domaine");
+    if (d.type === "finaliser_domaine") expect(d.raison).toBe("convergence");
+  });
+});
+
+describe("scénario : self-eval Expert (=> Avancé), échec Avc, descend, réussit Int → convergence à Int", () => {
+  it("converge correctement", () => {
+    // Étape 1 : Avc → 0/3 → descendre
+    let e = etatA("avance", { reponses_niveau_courant: reponses([false, false, false]) });
+    let d = decisionApresReponse(e);
+    expect(d.type).toBe("descendre_niveau");
+    if (d.type === "descendre_niveau") expect(d.vers).toBe("intermediaire");
+    const bornes1 = mettreAJourBornes(e, false);
+    expect(bornes1.niveau_min_echoue).toBe("avance");
+
+    // Étape 2 : Int → 2/3 → convergence (min_echoue est Avc = niveau au-dessus)
+    e = etatA("intermediaire", {
+      niveau_min_echoue: "avance",
+      reponses_niveau_courant: reponses([true, true, false])
+    });
+    d = decisionApresReponse(e);
+    expect(d.type).toBe("finaliser_domaine");
+    if (d.type === "finaliser_domaine") expect(d.raison).toBe("convergence");
+    const bornes2 = mettreAJourBornes(e, true);
+    expect(bornes2.niveau_max_reussi).toBe("intermediaire");
+  });
+});

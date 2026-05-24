@@ -1,0 +1,273 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { getTranslations, tr } from "@/lib/i18n";
+import { intakeSchema } from "@/lib/validation";
+
+const t = getTranslations();
+
+const SOURCES = [
+  { value: "google", label: t.intake.source_choix.google },
+  { value: "linkedin", label: t.intake.source_choix.linkedin },
+  { value: "reference", label: t.intake.source_choix.reference },
+  { value: "infolettre", label: t.intake.source_choix.infolettre },
+  { value: "autre", label: t.intake.source_choix.autre }
+];
+
+const AUTO_EVAL_OPTIONS: Array<{ value: "novice" | "a_laise" | "expert" | "skip"; label: string; aide: string }> = [
+  { value: "novice",  label: t.intake.auto_evaluation_choix.novice,  aide: t.intake.auto_evaluation_aide.novice },
+  { value: "a_laise", label: t.intake.auto_evaluation_choix.a_laise, aide: t.intake.auto_evaluation_aide.a_laise },
+  { value: "expert",  label: t.intake.auto_evaluation_choix.expert,  aide: t.intake.auto_evaluation_aide.expert },
+  { value: "skip",    label: t.intake.auto_evaluation_choix.skip,    aide: t.intake.auto_evaluation_aide.skip }
+];
+
+interface Domaine { id: string; slug: string; nom: string; description: string | null }
+
+interface Props {
+  domaines: Array<Domaine>;
+}
+
+export function IntakeForm({ domaines }: Props) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [erreurs, setErreurs] = useState<Record<string, string>>({});
+  const [erreurGenerale, setErreurGenerale] = useState<string | null>(null);
+
+  const [prenom, setPrenom] = useState("");
+  const [nom, setNom] = useState("");
+  const [courriel, setCourriel] = useState("");
+  const [source, setSource] = useState("");
+  const [consentementMarketing, setConsentementMarketing] = useState(false);
+  const [acceptePolitique, setAcceptePolitique] = useState(false);
+  const [autoEvals, setAutoEvals] = useState<Record<string, string>>({});
+
+  function setEval(slug: string, value: string) {
+    setAutoEvals((prev) => ({ ...prev, [slug]: value }));
+  }
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErreurs({});
+    setErreurGenerale(null);
+
+    // Verifie que tous les domaines ont une auto-evaluation (ou non_pertinent).
+    const manquants = domaines.filter((d) => !autoEvals[d.slug]);
+    if (manquants.length > 0) {
+      setErreurs({ auto_evaluations: t.intake.auto_eval_requise });
+      const first = document.getElementById("autoeval-" + manquants[0].slug);
+      first?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    const parsed = intakeSchema.safeParse({
+      prenom, nom, courriel,
+      source_acquisition: source,
+      consentement_marketing: consentementMarketing,
+      accepte_politique: acceptePolitique,
+      auto_evaluations: autoEvals
+    });
+
+    if (!parsed.success) {
+      const errs: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        errs[issue.path.join(".")] = issue.message;
+      }
+      setErreurs(errs);
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await fetch("/api/test/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErreurGenerale(data.error ?? t.commun.erreur);
+        return;
+      }
+      router.push("/test/" + data.test_id);
+    });
+  }
+
+  const politiqueUrl = process.env.NEXT_PUBLIC_PRIVACY_POLICY_URL ?? "#";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t.intake.titre}</CardTitle>
+        <p className="text-sm text-muted-foreground">{t.intake.sous_titre}</p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={onSubmit} className="space-y-6">
+          {/* Coordonnees */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Champ id="prenom" label={t.intake.prenom} valeur={prenom} setValeur={setPrenom} erreur={erreurs.prenom} required />
+            <Champ id="nom" label={t.intake.nom} valeur={nom} setValeur={setNom} erreur={erreurs.nom} required />
+          </div>
+          <Champ id="courriel" type="email" label={t.intake.courriel} valeur={courriel} setValeur={setCourriel} erreur={erreurs.courriel} required />
+
+          <div className="space-y-2">
+            <Label>{t.intake.source}</Label>
+            <Select value={source} onValueChange={setSource}>
+              <SelectTrigger><SelectValue placeholder="Selectionner..." /></SelectTrigger>
+              <SelectContent>
+                {SOURCES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {erreurs.source_acquisition ? (
+              <p className="text-xs text-destructive">{erreurs.source_acquisition}</p>
+            ) : null}
+          </div>
+
+          <Separator />
+
+          {/* Auto-evaluation par domaine */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold">{t.intake.auto_evaluation_titre}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t.intake.auto_evaluation_sous_titre}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {domaines.map((d) => {
+                const valeur = autoEvals[d.slug] ?? "";
+                const nonPertinent = valeur === "non_pertinent";
+                return (
+                  <div
+                    key={d.id}
+                    id={"autoeval-" + d.slug}
+                    className="rounded-md border bg-muted/20 p-3"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 sm:pt-2">
+                        <p className="font-medium">{d.nom}</p>
+                        {d.description ? (
+                          <p className="text-xs text-muted-foreground line-clamp-1">
+                            {d.description}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex w-full flex-col gap-2 sm:w-72 sm:shrink-0">
+                        <Select
+                          value={nonPertinent ? "" : valeur}
+                          onValueChange={(v) => setEval(d.slug, v)}
+                          disabled={nonPertinent}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Choisir..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AUTO_EVAL_OPTIONS.map((o) => (
+                              <SelectItem key={o.value} value={o.value}>
+                                <div>
+                                  <div className="font-medium">{o.label}</div>
+                                  <div className="text-xs text-muted-foreground">{o.aide}</div>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex items-start gap-2">
+                          <Checkbox
+                            id={"non-pertinent-" + d.slug}
+                            checked={nonPertinent}
+                            onCheckedChange={(v) =>
+                              setEval(d.slug, v ? "non_pertinent" : "")
+                            }
+                          />
+                          <Label
+                            htmlFor={"non-pertinent-" + d.slug}
+                            className="text-xs leading-snug text-muted-foreground"
+                          >
+                            <span className="block font-medium text-foreground">
+                              {t.intake.non_pertinent_label}
+                            </span>
+                            <span className="block">
+                              {t.intake.non_pertinent_aide}
+                            </span>
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {erreurs.auto_evaluations ? (
+              <p className="text-sm text-destructive">{erreurs.auto_evaluations}</p>
+            ) : null}
+          </div>
+
+          <Separator />
+
+          {/* Consentement */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold">{t.intake.consentement_titre}</h3>
+            <CaseConsentement id="marketing" checked={consentementMarketing} setChecked={setConsentementMarketing} erreur={erreurs.consentement_marketing}>
+              {t.intake.consentement_marketing}
+            </CaseConsentement>
+            <CaseConsentement id="politique" checked={acceptePolitique} setChecked={setAcceptePolitique} erreur={erreurs.accepte_politique}>
+              {tr(t.intake.consentement_politique, { lien_politique: "" })}
+              <a href={politiqueUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline-offset-2 hover:underline">
+                {" "}{t.intake.lien_politique}
+              </a>
+              .
+            </CaseConsentement>
+          </div>
+
+          {erreurGenerale ? (
+            <p className="text-sm text-destructive">{erreurGenerale}</p>
+          ) : null}
+
+          <Button type="submit" size="lg" className="w-full" disabled={isPending}>
+            {isPending ? t.commun.chargement : t.test.commencer}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Champ({ id, label, valeur, setValeur, erreur, required, type }: {
+  id: string; label: string; valeur: string; setValeur: (v: string) => void;
+  erreur?: string; required?: boolean; type?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} type={type ?? "text"} value={valeur} onChange={(e) => setValeur(e.target.value)} required={required} />
+      {erreur ? <p className="text-xs text-destructive">{erreur}</p> : null}
+    </div>
+  );
+}
+
+function CaseConsentement({ id, checked, setChecked, erreur, children }: {
+  id: string; checked: boolean; setChecked: (v: boolean) => void; erreur?: string; children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="flex items-start gap-3">
+        <Checkbox id={id} checked={checked} onCheckedChange={(v) => setChecked(Boolean(v))} />
+        <Label htmlFor={id} className="text-sm leading-relaxed">{children}</Label>
+      </div>
+      {erreur ? <p className="ml-7 mt-1 text-xs text-destructive">{erreur}</p> : null}
+    </div>
+  );
+}

@@ -1,0 +1,750 @@
+/**
+ * =============================================================================
+ * Runner serveur du moteur adaptatif (avec auto-evaluation bidirectionnelle).
+ *
+ * Orchestre les transitions d'etat du test (reponse, finalisation,
+ * passage de domaine) en s'appuyant sur Supabase pour la persistance.
+ * Appele exclusivement depuis les routes API serveur (cle service_role).
+ * ==========================================================================
+ */
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  decisionApresReponse,
+  domaineSuivant,
+  etatInitial,
+  finaliserDomaine,
+  mettreAJourBornes,
+  niveauDeDepart,
+  niveauIdParSlug,
+  ORDRE_NIVEAUX,
+  piocheQuestion,
+  reponseEstCorrecte,
+  type AutoEvaluation,
+  type EtatTest,
+  type ResultatDomaine
+} from "./engine";
+import { construireRecommandations, scoreGlobal } from "./scoring";
+import type {
+  Domaine,
+  Formation,
+  Niveau,
+  NiveauSlug,
+  Question
+} from "@/lib/supabase/types";
+
+type Sb = SupabaseClient;
+
+export interface ContexteTest {
+  domaines: Domaine[];
+  niveaux: Niveau[];
+}
+
+export async function chargerContexte(supabase: Sb): Promise<ContexteTest> {
+  const [domRes, nivRes] = await Promise.all([
+    supabase.from("domaines").select("*").eq("actif", true).order("ordre"),
+    supabase.from("niveaux").select("*").order("ordre")
+  ]);
+  if (domRes.error || nivRes.error) {
+    const detail = [
+      domRes.error ? "domaines: " + (domRes.error.message ?? JSON.stringify(domRes.error)) : null,
+      nivRes.error ? "niveaux: " + (nivRes.error.message ?? JSON.stringify(nivRes.error)) : null
+    ].filter(Boolean).join(" | ");
+    console.error("[chargerContexte] Supabase error →", detail);
+    throw new Error("Erreur Supabase lors du chargement des domaines/niveaux : " + detail);
+  }
+  if (!domRes.data || !nivRes.data || domRes.data.length === 0 || nivRes.data.length === 0) {
+    const msg = "Tables vides ou inaccessibles (domaines=" + (domRes.data?.length ?? "null") + ", niveaux=" + (nivRes.data?.length ?? "null") + "). Avez-vous appliqué les 3 migrations SQL ?";
+    console.error("[chargerContexte]", msg);
+    throw new Error(msg);
+  }
+  return { domaines: domRes.data, niveaux: nivRes.data };
+}
+
+async function chargerBanque(
+  supabase: Sb,
+  domaine_id: string,
+  niveau_id: string
+): Promise<Question[]> {
+  const { data } = await supabase
+    .from("questions")
+    .select("*")
+    .eq("domaine_id", domaine_id)
+    .eq("niveau_id", niveau_id)
+    .eq("actif", true);
+  return data ?? [];
+}
+
+export function sanitiserQuestionPourClient(q: Question) {
+  return { id: q.id, type: q.type, enonce: q.enonce, options: q.options };
+}
+
+// -----------------------------------------------------------------------------
+// Pioche la prochaine question pour le domaine + niveau courants.
+// -----------------------------------------------------------------------------
+export async function preparerNouvelleQuestion(
+  supabase: Sb,
+  contexte: ContexteTest,
+  etat: EtatTest
+): Promise<{ etat: EtatTest; question: Question | null }> {
+  const domaine = contexte.domaines[etat.domaine_actuel_idx];
+  if (!domaine) return { etat, question: null };
+
+  // Tentative au niveau courant, puis fallback automatique vers les niveaux
+  // inférieurs si la banque est vide pour le niveau demandé. Permet à l'app
+  // de fonctionner même avec une banque incomplète (typique en dev avec
+  // uniquement des questions Débutant). On met à jour niveau_actuel pour
+  // refléter le vrai niveau testé, et niveau_min_echoue pour le plus bas
+  // niveau effectivement vide rencontré — afin que decisionApresReponse
+  // converge correctement plutôt que de re-tenter un niveau vide.
+  let niveauEssai = etat.niveau_actuel;
+  let dernierVide: NiveauSlug | null = null;
+  while (true) {
+    const niveau_id = niveauIdParSlug(contexte.niveaux, niveauEssai);
+    const banque = await chargerBanque(supabase, domaine.id, niveau_id);
+    const q = piocheQuestion(banque, etat.questions_id_deja_tirees);
+    if (q) {
+      // Calcule le niveau_min_echoue final : minimum (au sens d'ORDRE_NIVEAUX)
+      // entre la valeur existante et le dernier niveau vide rencontré.
+      let nouv_min_echoue = etat.niveau_min_echoue;
+      if (dernierVide) {
+        const idxExistant = nouv_min_echoue
+          ? ORDRE_NIVEAUX.indexOf(nouv_min_echoue)
+          : ORDRE_NIVEAUX.length;
+        const idxVide = ORDRE_NIVEAUX.indexOf(dernierVide);
+        nouv_min_echoue = idxVide < idxExistant ? dernierVide : nouv_min_echoue;
+      }
+      return {
+        etat: {
+          ...etat,
+          niveau_actuel: niveauEssai,
+          niveau_min_echoue: nouv_min_echoue,
+          question_courante_id: q.id,
+          questions_id_deja_tirees: [...etat.questions_id_deja_tirees, q.id]
+        },
+        question: q
+      };
+    }
+    // Pas de question à ce niveau : mémoriser et descendre d'un cran.
+    dernierVide = niveauEssai;
+    const idx = ORDRE_NIVEAUX.indexOf(niveauEssai);
+    if (idx <= 0) {
+      console.warn(
+        "[preparerNouvelleQuestion] Aucune question disponible pour le domaine " +
+          domaine.nom + " (slug=" + domaine.slug + ") à aucun niveau."
+      );
+      return { etat, question: null };
+    }
+    niveauEssai = ORDRE_NIVEAUX[idx - 1];
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Vue agrégée renvoyée au client (question à afficher + progression)
+// -----------------------------------------------------------------------------
+export interface VueClient {
+  test_id: string;
+  statut: "en_cours" | "complete";
+  domaine_courant: {
+    id: string;
+    nom: string;
+    slug: string;
+    index: number;
+    total: number;
+  } | null;
+  niveau_courant: NiveauSlug | null;
+  question: ReturnType<typeof sanitiserQuestionPourClient> | null;
+  numero_question_dans_niveau: number;
+}
+
+export async function construireVueClient(
+  supabase: Sb,
+  test_id: string,
+  contexte: ContexteTest,
+  etat: EtatTest,
+  statut: "en_cours" | "complete"
+): Promise<VueClient> {
+  if (statut === "complete") {
+    return {
+      test_id,
+      statut,
+      domaine_courant: null,
+      niveau_courant: null,
+      question: null,
+      numero_question_dans_niveau: 0
+    };
+  }
+  const domaine = contexte.domaines[etat.domaine_actuel_idx] ?? null;
+  let question: Question | null = null;
+  if (etat.question_courante_id) {
+    const { data } = await supabase
+      .from("questions")
+      .select("*")
+      .eq("id", etat.question_courante_id)
+      .maybeSingle();
+    question = data;
+  }
+  return {
+    test_id,
+    statut,
+    domaine_courant: domaine
+      ? {
+          id: domaine.id,
+          nom: domaine.nom,
+          slug: domaine.slug,
+          index: etat.domaine_actuel_idx + 1,
+          total: contexte.domaines.length
+        }
+      : null,
+    niveau_courant: etat.niveau_actuel,
+    question: question ? sanitiserQuestionPourClient(question) : null,
+    numero_question_dans_niveau: etat.reponses_niveau_courant.length + 1
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Helper : initialise (ou avance jusqu'à) le prochain domaine non skipped
+// -----------------------------------------------------------------------------
+async function avancerJusquAuProchainDomaineActif(
+  supabase: Sb,
+  contexte: ContexteTest,
+  etat: EtatTest
+): Promise<EtatTest> {
+  let courant = etat;
+  while (courant.domaine_actuel_idx < contexte.domaines.length) {
+    const domaine = contexte.domaines[courant.domaine_actuel_idx];
+    const auto = courant.auto_evaluations[domaine.id] ?? "novice";
+
+    if (auto === "non_pertinent") {
+      // Domaine EXCLU : on n'ajoute RIEN à resultats_domaines, on passe au suivant
+      // sans persister de score. Le domaine n'apparaîtra pas dans le rapport.
+      const { fini, nouvel_etat } = domaineSuivant(courant, contexte.domaines);
+      courant = nouvel_etat;
+      if (fini) break;
+      continue;
+    }
+
+    if (auto === "skip") {
+      // "Je ne connais pas" : on attribue d'office le niveau Débutant.
+      // 0 question posée, mais le domaine apparaît dans le rapport au niveau Débutant.
+      const resultat = finaliserDomaine(domaine.id, [], "debutant", false);
+      await persisterScoreParDomaine(supabase, /* test_id */ "", resultat, contexte, true);
+      courant = {
+        ...courant,
+        resultats_domaines: [...courant.resultats_domaines, resultat],
+        reponses_niveau_courant: [],
+        question_courante_id: null,
+        niveau_max_reussi: null,
+        niveau_min_echoue: null
+      };
+      const { fini, nouvel_etat } = domaineSuivant(courant, contexte.domaines);
+      courant = nouvel_etat;
+      if (fini) break;
+      continue;
+    }
+
+    // Domaine actif (novice / a_laise / expert) : configure le niveau de départ.
+    const niveauDepart = niveauDeDepart(auto) ?? "debutant";
+    courant = {
+      ...courant,
+      niveau_actuel: niveauDepart,
+      reponses_niveau_courant: [],
+      question_courante_id: null,
+      niveau_max_reussi: null,
+      niveau_min_echoue: null
+    };
+    break;
+  }
+  return courant;
+}
+
+/**
+ * Avance vers le prochain domaine qui a réellement des questions à poser.
+ * Si un domaine n'a aucune question (à aucun niveau), on le finalise comme
+ * "non évalué" (niveau_atteint=null, passe=false) et on passe au suivant.
+ * Retourne l'état après préparation de la première question, OU avec
+ * domaine_actuel_idx == contexte.domaines.length si on a fait le tour.
+ */
+async function prochainDomaineAvecQuestion(
+  supabase: Sb,
+  test_id: string,
+  contexte: ContexteTest,
+  etat: EtatTest
+): Promise<EtatTest> {
+  let courant = await avancerJusquAuProchainDomaineActif(supabase, contexte, etat);
+  while (courant.domaine_actuel_idx < contexte.domaines.length) {
+    const prep = await preparerNouvelleQuestion(supabase, contexte, courant);
+    if (prep.question) {
+      return prep.etat;
+    }
+    // Pas de question pour ce domaine, à aucun niveau. Finaliser en "non évalué".
+    const domaine = contexte.domaines[courant.domaine_actuel_idx];
+    const resultat = finaliserDomaine(domaine.id, [], null, false);
+    if (test_id) {
+      await persisterScoreParDomaine(supabase, test_id, resultat, contexte);
+    }
+    courant = {
+      ...courant,
+      resultats_domaines: [...courant.resultats_domaines, resultat]
+    };
+    const { fini, nouvel_etat } = domaineSuivant(courant, contexte.domaines);
+    courant = nouvel_etat;
+    if (fini) break;
+    courant = await avancerJusquAuProchainDomaineActif(supabase, contexte, courant);
+  }
+  return courant;
+}
+
+/**
+ * Note : pour les domaines "skip" finalises pendant l'initialisation, on n'a
+ * pas encore le test_id ; on memorise le resultat dans donnees_etat et on
+ * persistera apres creation du test (voir demarrerOuReprendreTest).
+ */
+async function persisterScoreParDomaine(
+  supabase: Sb,
+  test_id: string,
+  resultat: ResultatDomaine,
+  contexte: ContexteTest,
+  differeSiPasDeTest = false
+) {
+  if (!test_id && differeSiPasDeTest) return;
+  const niveau_atteint_id = resultat.niveau_atteint
+    ? niveauIdParSlug(contexte.niveaux, resultat.niveau_atteint)
+    : null;
+  await supabase.from("scores_par_domaine").upsert(
+    {
+      test_id,
+      domaine_id: resultat.domaine_id,
+      niveau_atteint_id,
+      pourcentage: resultat.pourcentage,
+      nb_reponses: resultat.nb_reponses,
+      nb_correctes: resultat.nb_correctes,
+      passe: resultat.passe
+    },
+    { onConflict: "test_id,domaine_id" }
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Soumettre une réponse → met à jour l'état → retourne la VueClient suivante.
+// -----------------------------------------------------------------------------
+export async function soumettreReponse(
+  supabase: Sb,
+  test_id: string,
+  question_id: string,
+  reponse_donnee: string | null,
+  temps_passe_ms: number | undefined,
+  contexte: ContexteTest
+): Promise<{ vue: VueClient }> {
+  const { data: test } = await supabase
+    .from("tests")
+    .select("*")
+    .eq("id", test_id)
+    .maybeSingle();
+  if (!test) throw new Error("Test introuvable");
+  if (test.statut !== "en_cours") {
+    return {
+      vue: await construireVueClient(supabase, test_id, contexte, test.donnees_etat as EtatTest, "complete")
+    };
+  }
+
+  const etat = test.donnees_etat as EtatTest;
+  if (etat.question_courante_id !== question_id) {
+    // Désynchronisation (refresh, double-soumission, état réparé entre-temps).
+    // On ignore silencieusement la réponse et on renvoie l'état actuel :
+    // le navigateur affichera alors la vraie question en cours.
+    console.warn(
+      "[soumettreReponse] question_id envoyé=" + question_id +
+      " ≠ question_courante_id=" + etat.question_courante_id +
+      " → on ignore et on renvoie l'état actuel."
+    );
+    return {
+      vue: await construireVueClient(supabase, test_id, contexte, etat, "en_cours")
+    };
+  }
+
+  const { data: question } = await supabase
+    .from("questions")
+    .select("*")
+    .eq("id", question_id)
+    .maybeSingle();
+  if (!question) throw new Error("Question introuvable");
+
+  const correct = reponseEstCorrecte(question, reponse_donnee);
+
+  await supabase.from("reponses").insert({
+    test_id,
+    question_id,
+    reponse_donnee: reponse_donnee ?? null,
+    correct,
+    temps_passe_ms: temps_passe_ms ?? null
+  });
+
+  let nouvel_etat: EtatTest = {
+    ...etat,
+    reponses_niveau_courant: [
+      ...etat.reponses_niveau_courant,
+      { question_id, correct }
+    ],
+    question_courante_id: null
+  };
+
+  const decision = decisionApresReponse(nouvel_etat);
+
+  if (decision.type === "poser_question") {
+    const prep = await preparerNouvelleQuestion(supabase, contexte, nouvel_etat);
+    nouvel_etat = prep.etat;
+  } else if (decision.type === "monter_niveau" || decision.type === "descendre_niveau") {
+    // Bloc de 3 terminé → mettre à jour les bornes max/min.
+    const reussi = decision.type === "monter_niveau";
+    const bornes = mettreAJourBornes(nouvel_etat, reussi);
+    nouvel_etat = {
+      ...nouvel_etat,
+      niveau_max_reussi: bornes.niveau_max_reussi,
+      niveau_min_echoue: bornes.niveau_min_echoue,
+      niveau_actuel: decision.vers,
+      reponses_niveau_courant: []
+    };
+    const prep = await preparerNouvelleQuestion(supabase, contexte, nouvel_etat);
+    nouvel_etat = prep.etat;
+  } else if (decision.type === "finaliser_domaine") {
+    nouvel_etat = await finaliserEtAvancer(
+      supabase,
+      test_id,
+      contexte,
+      nouvel_etat,
+      decision.raison
+    );
+  }
+
+  let nouveau_statut: "en_cours" | "complete" = "en_cours";
+  if (nouvel_etat.domaine_actuel_idx >= contexte.domaines.length) {
+    nouveau_statut = "complete";
+    await completerTest(supabase, test_id, nouvel_etat);
+  } else {
+    await supabase.from("tests").update({ donnees_etat: nouvel_etat }).eq("id", test_id);
+  }
+
+  return {
+    vue: await construireVueClient(supabase, test_id, contexte, nouvel_etat, nouveau_statut)
+  };
+}
+
+async function finaliserEtAvancer(
+  supabase: Sb,
+  test_id: string,
+  contexte: ContexteTest,
+  etat: EtatTest,
+  raison: "convergence" | "plancher" | "plafond"
+): Promise<EtatTest> {
+  const domaine = contexte.domaines[etat.domaine_actuel_idx];
+  // Toutes les réponses du domaine courant.
+  const { data: toutes } = await supabase
+    .from("reponses")
+    .select("correct, question:questions!inner(domaine_id)")
+    .eq("test_id", test_id);
+  const reponses_domaine = (toutes ?? []).filter((r) => {
+    const dom = (r.question as unknown as { domaine_id: string } | null)?.domaine_id;
+    return dom === domaine.id;
+  });
+
+  // Met à jour les bornes pour le dernier bloc (puisqu'on n'est pas passé par
+  // l'arête monter/descendre — on a directement finalisé).
+  const nb_correctes = etat.reponses_niveau_courant.filter((r) => r.correct).length;
+  const reussi_dernier = nb_correctes >= 2;
+  const bornes = mettreAJourBornes(etat, reussi_dernier);
+
+  const resultat = finaliserDomaine(
+    domaine.id,
+    reponses_domaine.map((r) => ({ correct: r.correct })),
+    bornes.niveau_max_reussi,
+    false
+  );
+  await persisterScoreParDomaine(supabase, test_id, resultat, contexte);
+
+  let e: EtatTest = {
+    ...etat,
+    niveau_max_reussi: bornes.niveau_max_reussi,
+    niveau_min_echoue: bornes.niveau_min_echoue,
+    resultats_domaines: [...etat.resultats_domaines, resultat]
+  };
+
+  // Avance au domaine suivant (en sautant les skipped).
+  const { fini, nouvel_etat } = domaineSuivant(e, contexte.domaines);
+  if (fini) return nouvel_etat;
+
+  e = await avancerJusquAuProchainDomaineActif(supabase, contexte, nouvel_etat);
+  // Si pendant l'avance on a skipped d'autres domaines, persister leurs résultats.
+  // Les resultats ajoutés en avancement sont déjà dans e.resultats_domaines mais
+  // n'ont pas été persistés car test_id était inconnu — on persiste maintenant.
+  await persisterTousLesSkipped(supabase, test_id, e, contexte);
+
+  if (e.domaine_actuel_idx >= contexte.domaines.length) {
+    return e;
+  }
+  // Pioche la première question du nouveau domaine actif (avec fallback sur
+  // les niveaux inférieurs et sur les domaines suivants si la banque est vide).
+  return await prochainDomaineAvecQuestion(supabase, test_id, contexte, e);
+}
+
+async function persisterTousLesSkipped(
+  supabase: Sb,
+  test_id: string,
+  etat: EtatTest,
+  contexte: ContexteTest
+) {
+  // Persiste les résultats des domaines finalisés sans interaction utilisateur
+  // (avant que test_id ne soit disponible). Cela inclut :
+  //   - skip (niveau_atteint="debutant", passe=false, nb_reponses=0)
+  //   - les anciens "passes" (pour compatibilité avec d'éventuels tests historiques)
+  for (const r of etat.resultats_domaines) {
+    if (r.nb_reponses === 0) {
+      await persisterScoreParDomaine(supabase, test_id, r, contexte);
+    }
+  }
+}
+
+
+/**
+ * Auto-réparation d'un état "bloqué" : pas de question courante mais test
+ * pas terminé. Trois cas :
+ *   1) Le domaine courant a une banque non vide → on pioche la prochaine
+ *      question sans réinitialiser les bornes/réponses (progression préservée).
+ *   2) Le domaine courant est totalement vide → on le finalise avec le niveau
+ *      atteint (s'il y a eu des bonnes réponses) et on passe au suivant.
+ *   3) Tous les domaines restants sont skipped ou vides → on finalise le test.
+ */
+export async function reparerEtatBloque(
+  supabase: Sb,
+  test_id: string,
+  contexte: ContexteTest,
+  etat: EtatTest
+): Promise<{ etat: EtatTest; statut: "en_cours" | "complete" }> {
+  let courant = etat;
+
+  // Cas 0 : tous les domaines actifs ont déjà été finalisés mais l'index
+  // n'a pas été incrémenté correctement (ancien bug de domaineSuivant).
+  // On corrige l'index et on finalise le test.
+  const idsResolus = new Set(courant.resultats_domaines.map((r) => r.domaine_id));
+  const tousResolus = contexte.domaines.every((d) => idsResolus.has(d.id));
+  if (tousResolus) {
+    const corrige: EtatTest = {
+      ...courant,
+      domaine_actuel_idx: contexte.domaines.length,
+      reponses_niveau_courant: [],
+      question_courante_id: null
+    };
+    await completerTest(supabase, test_id, corrige);
+    return { etat: corrige, statut: "complete" };
+  }
+
+  // Cas 1 : essayer de retrouver une question au niveau et domaine actuels.
+  if (courant.domaine_actuel_idx < contexte.domaines.length) {
+    const prep = await preparerNouvelleQuestion(supabase, contexte, courant);
+    if (prep.question) {
+      await supabase.from("tests").update({ donnees_etat: prep.etat }).eq("id", test_id);
+      return { etat: prep.etat, statut: "en_cours" };
+    }
+    // Cas 2 : aucune question, même en fallback. Finaliser ce domaine.
+    const domaine = contexte.domaines[courant.domaine_actuel_idx];
+    const { data: toutes } = await supabase
+      .from("reponses")
+      .select("correct, question:questions!inner(domaine_id)")
+      .eq("test_id", test_id);
+    const reponses_dom = (toutes ?? []).filter((r) => {
+      const dom = (r.question as unknown as { domaine_id: string } | null)?.domaine_id;
+      return dom === domaine.id;
+    });
+    const resultat = finaliserDomaine(
+      domaine.id,
+      reponses_dom.map((r) => ({ correct: r.correct })),
+      courant.niveau_max_reussi,
+      false
+    );
+    await persisterScoreParDomaine(supabase, test_id, resultat, contexte);
+    courant = {
+      ...courant,
+      resultats_domaines: [...courant.resultats_domaines, resultat]
+    };
+    const { fini, nouvel_etat } = domaineSuivant(courant, contexte.domaines);
+    courant = nouvel_etat;
+    if (!fini) {
+      courant = await prochainDomaineAvecQuestion(supabase, test_id, contexte, courant);
+    }
+  }
+
+  // Cas 3 : test terminé.
+  if (courant.domaine_actuel_idx >= contexte.domaines.length) {
+    await completerTest(supabase, test_id, courant);
+    return { etat: courant, statut: "complete" };
+  }
+  await supabase.from("tests").update({ donnees_etat: courant }).eq("id", test_id);
+  return { etat: courant, statut: "en_cours" };
+}
+
+async function completerTest(supabase: Sb, test_id: string, etat: EtatTest) {
+  const score = scoreGlobal(etat.resultats_domaines);
+  await supabase
+    .from("tests")
+    .update({
+      statut: "complete",
+      date_fin: new Date().toISOString(),
+      score_global: score,
+      donnees_etat: etat
+    })
+    .eq("id", test_id);
+}
+
+// -----------------------------------------------------------------------------
+// Démarrage / reprise d'un test
+// -----------------------------------------------------------------------------
+export async function demarrerOuReprendreTest(
+  supabase: Sb,
+  client_id: string,
+  auto_evaluations: Record<string, AutoEvaluation>,
+  contexte: ContexteTest
+): Promise<{ test_id: string; statut: "en_cours" | "complete" }> {
+  const { data: deja_complet } = await supabase
+    .from("tests")
+    .select("id")
+    .eq("client_id", client_id)
+    .eq("statut", "complete")
+    .maybeSingle();
+  if (deja_complet) {
+    const err = new Error("DEJA_COMPLETE");
+    (err as Error & { code?: string }).code = "DEJA_COMPLETE";
+    throw err;
+  }
+
+  // Test en cours ? → reprise : on garde les domaines déjà finalisés.
+  const { data: en_cours } = await supabase
+    .from("tests")
+    .select("id, donnees_etat")
+    .eq("client_id", client_id)
+    .eq("statut", "en_cours")
+    .maybeSingle();
+
+  if (en_cours) {
+    const etat = en_cours.donnees_etat as EtatTest;
+    let repris: EtatTest = {
+      ...etat,
+      auto_evaluations: { ...etat.auto_evaluations, ...auto_evaluations },
+      reponses_niveau_courant: [],
+      question_courante_id: null,
+      niveau_max_reussi: null,
+      niveau_min_echoue: null
+    };
+    // Avance jusqu'à un domaine actif avec questions (fallback automatique).
+    repris = await prochainDomaineAvecQuestion(supabase, en_cours.id, contexte, repris);
+    if (repris.domaine_actuel_idx >= contexte.domaines.length) {
+      await completerTest(supabase, en_cours.id, repris);
+      return { test_id: en_cours.id, statut: "complete" };
+    }
+    await supabase.from("tests").update({ donnees_etat: repris }).eq("id", en_cours.id);
+    await persisterTousLesSkipped(supabase, en_cours.id, repris, contexte);
+    return { test_id: en_cours.id, statut: "en_cours" };
+  }
+
+  // Nouveau test.
+  const etat0 = etatInitial(auto_evaluations);
+  const { data: nouveau } = await supabase
+    .from("tests")
+    .insert({ client_id, statut: "en_cours", donnees_etat: etat0 })
+    .select("id")
+    .single();
+  if (!nouveau) throw new Error("Impossible de créer le test");
+
+  const etat = await prochainDomaineAvecQuestion(supabase, nouveau.id, contexte, etat0);
+  await supabase.from("tests").update({ donnees_etat: etat }).eq("id", nouveau.id);
+  await persisterTousLesSkipped(supabase, nouveau.id, etat, contexte);
+
+  // Si tous les domaines ont été skipped ou n'ont pas de questions → test déjà complete.
+  if (etat.domaine_actuel_idx >= contexte.domaines.length) {
+    await completerTest(supabase, nouveau.id, etat);
+    return { test_id: nouveau.id, statut: "complete" };
+  }
+  return { test_id: nouveau.id, statut: "en_cours" };
+}
+
+// -----------------------------------------------------------------------------
+// Construction du rapport final pour affichage.
+// -----------------------------------------------------------------------------
+export interface DonneesRapport {
+  test_id: string;
+  client: { prenom: string; nom: string; courriel: string };
+  score_global: number;
+  resultats: Array<{
+    domaine_id: string;
+    domaine_nom: string;
+    domaine_slug: string;
+    niveau_atteint: NiveauSlug | null;
+    niveau_nom: string;
+    passe: boolean;
+    pourcentage: number;
+  }>;
+  recommandations: Array<{
+    domaine_id: string;
+    domaine_nom: string;
+    formation: Formation;
+    /**
+     * Pré-requis à suivre AVANT la formation cible, dans l'ordre logique
+     * (du plus en amont au plus immédiat). Exclut les pré-requis déjà
+     * maîtrisés par le client.
+     */
+    prerequis_chaine: Formation[];
+  }>;
+}
+
+export async function chargerRapport(
+  supabase: Sb,
+  test_id: string,
+  contexte: ContexteTest
+): Promise<DonneesRapport | null> {
+  const { data: test } = await supabase
+    .from("tests")
+    .select("id, score_global, statut, donnees_etat, client:clients(prenom, nom, courriel)")
+    .eq("id", test_id)
+    .maybeSingle();
+  if (!test || test.statut !== "complete") return null;
+  const etat = test.donnees_etat as EtatTest;
+  const { data: formations } = await supabase
+    .from("formations")
+    .select("*")
+    .eq("actif", true);
+
+  const recos = construireRecommandations(
+    etat.resultats_domaines,
+    formations ?? [],
+    contexte.niveaux
+  );
+
+  const resultats = etat.resultats_domaines.map((r) => {
+    const dom = contexte.domaines.find((d) => d.id === r.domaine_id);
+    const niveau = r.niveau_atteint
+      ? contexte.niveaux.find((n) => n.slug === r.niveau_atteint)
+      : null;
+    return {
+      domaine_id: r.domaine_id,
+      domaine_nom: dom?.nom ?? "",
+      domaine_slug: dom?.slug ?? "",
+      niveau_atteint: r.niveau_atteint,
+      niveau_nom: r.passe ? "Non évalué" : niveau?.nom ?? "Aucun",
+      passe: r.passe,
+      pourcentage: r.pourcentage
+    };
+  });
+
+  const client = test.client as unknown as { prenom: string; nom: string; courriel: string };
+  return {
+    test_id: test.id,
+    client,
+    score_global: test.score_global ?? 0,
+    resultats,
+    recommandations: recos.map((r) => ({
+      domaine_id: r.domaine_id,
+      domaine_nom: contexte.domaines.find((d) => d.id === r.domaine_id)?.nom ?? "",
+      formation: r.formation,
+      prerequis_chaine: r.prerequis_chaine
+    }))
+  };
+}
