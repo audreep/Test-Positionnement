@@ -1,25 +1,50 @@
-import Link from "next/link";
-import { Plus } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { getTranslations } from "@/lib/i18n";
+import { QuestionsListe, BoutonAjouter } from "@/components/admin/questions-liste";
 
 const t = getTranslations();
+
+interface QuestionAvecJoin {
+  id: string;
+  enonce: string;
+  type: string;
+  actif: boolean;
+  ordre: number;
+  domaine_id: string;
+  niveau_id: string;
+  domaine: { nom: string } | null;
+  niveau: { nom: string; ordre: number } | null;
+}
 
 export default async function AdminQuestionsPage() {
   const supabase = createSupabaseServerClient();
 
-  const { data: questions } = await supabase
-    .from("questions")
-    .select(`
-      id, enonce, type, actif, ordre,
-      domaine:domaines(nom),
-      niveau:niveaux(nom, ordre)
-    `)
-    .order("domaine_id", { ascending: true })
-    .order("ordre", { ascending: true })
-    .limit(500);
+  const [questionsRes, domainesRes, niveauxRes] = await Promise.all([
+    supabase
+      .from("questions")
+      .select(`
+        id, enonce, type, actif, ordre, domaine_id, niveau_id,
+        domaine:domaines(nom),
+        niveau:niveaux(nom, ordre)
+      `)
+      .order("ordre", { ascending: true })
+      .limit(1000),
+    supabase.from("domaines").select("id, nom").eq("actif", true).order("ordre"),
+    supabase.from("niveaux").select("id, nom, ordre").order("ordre")
+  ]);
+
+  const questions = ((questionsRes.data ?? []) as unknown as QuestionAvecJoin[]).map((q) => ({
+    id: q.id,
+    enonce: q.enonce,
+    type: q.type,
+    actif: q.actif,
+    ordre: q.ordre,
+    domaine_id: q.domaine_id,
+    niveau_id: q.niveau_id,
+    domaine_nom: q.domaine?.nom ?? "",
+    niveau_nom: q.niveau?.nom ?? "",
+    niveau_ordre: q.niveau?.ordre ?? 0
+  }));
 
   return (
     <div className="space-y-6">
@@ -27,72 +52,17 @@ export default async function AdminQuestionsPage() {
         <div>
           <h1 className="text-2xl font-semibold">{t.admin.questions}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {(questions ?? []).length} question(s) dans la banque.
+            Banque de questions du test de positionnement.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/questions/nouvelle">
-            <Plus className="mr-2 h-4 w-4" />
-            {t.admin.ajouter}
-          </Link>
-        </Button>
+        <BoutonAjouter />
       </div>
 
-      <div className="overflow-x-auto rounded-md border bg-card">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Domaine</th>
-              <th className="px-4 py-3">Niveau</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Énoncé</th>
-              <th className="px-4 py-3">État</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {(questions ?? []).map((q) => (
-              <tr key={q.id} className="border-b last:border-0">
-                <td className="px-4 py-3 align-top">
-                  {/* @ts-expect-error Supabase join */}
-                  {q.domaine?.nom}
-                </td>
-                <td className="px-4 py-3 align-top">
-                  {/* @ts-expect-error Supabase join */}
-                  {q.niveau?.nom}
-                </td>
-                <td className="px-4 py-3 align-top text-xs uppercase text-muted-foreground">
-                  {q.type}
-                </td>
-                <td className="px-4 py-3 align-top">
-                  <span className="line-clamp-2 max-w-xl">{q.enonce}</span>
-                </td>
-                <td className="px-4 py-3 align-top">
-                  {q.actif ? (
-                    <Badge variant="success">Active</Badge>
-                  ) : (
-                    <Badge variant="outline">Inactive</Badge>
-                  )}
-                </td>
-                <td className="px-4 py-3 align-top text-right">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link href={`/admin/questions/${q.id}`}>
-                      {t.admin.modifier}
-                    </Link>
-                  </Button>
-                </td>
-              </tr>
-            ))}
-            {!questions || questions.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                  Aucune question pour le moment. Ajoutez-en avec le bouton ci-dessus.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+      <QuestionsListe
+        questions={questions}
+        domaines={domainesRes.data ?? []}
+        niveaux={niveauxRes.data ?? []}
+      />
     </div>
   );
 }
