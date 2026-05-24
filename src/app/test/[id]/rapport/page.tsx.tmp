@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { BarreNiveau } from "@/components/rapport/BarreNiveau";
+import { Logo } from "@/components/brand/Logo";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { chargerContexte, chargerRapport } from "@/lib/adaptive/runner";
 import { getTranslations } from "@/lib/i18n";
@@ -32,10 +33,17 @@ export default async function RapportPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-background">
+      {/* En-tête blanc avec logo */}
+      <header className="border-b bg-white">
+        <div className="container-app flex h-16 items-center">
+          <Logo />
+        </div>
+      </header>
+
       <div className="container-narrow py-12">
         <header className="mb-8 text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            {t.marque.nom}
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+            {t.marque.tagline}
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">
             {t.rapport.titre}
@@ -84,8 +92,9 @@ export default async function RapportPage({ params }: Props) {
                   <BarreNiveau niveau_atteint={r.niveau_atteint} />
 
                   {estExpert ? (
-                    <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
-                      <p className="text-sm font-medium text-primary">
+                    <div className="flex items-start gap-3 rounded-md border border-accent/30 bg-accent/10 p-4">
+                      <Trophy className="mt-0.5 h-5 w-5 shrink-0 text-accent" aria-hidden />
+                      <p className="text-sm font-semibold text-foreground">
                         Vous maîtrisez ce domaine au plus haut niveau testé — bravo !
                       </p>
                     </div>
@@ -188,6 +197,7 @@ function FormationBlock({ reco }: { reco: Reco }) {
                     </span>
                     <div className="min-w-0 flex-1">
                       <h4 className="font-semibold text-foreground">{p.titre}</h4>
+                      {p.description ? (
                         <p className="mt-1 text-sm text-muted-foreground">
                           {p.description}
                         </p>
@@ -201,7 +211,6 @@ function FormationBlock({ reco }: { reco: Reco }) {
                         ) : null}
                       </div>
                     </div>
-                  </div>
                   <Button asChild variant="outline" size="sm" className="shrink-0">
                     <a
                       href={p.url_inscription}

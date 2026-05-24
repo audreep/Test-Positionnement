@@ -27,6 +27,9 @@ const COULEUR_MUTED_TEXT = "#64748B";
 const COULEUR_AMBRE = "#F59E0B";
 const COULEUR_AMBRE_BG = "#FFFBEB";
 const COULEUR_AMBRE_TEXT = "#92400E";
+// Accent doré CFO Masqué (utilisé pour mettre en valeur le niveau Expert atteint)
+const COULEUR_OR = "#E5A823";
+const COULEUR_OR_BG = "#FEF6E1";
 
 const styles = StyleSheet.create({
   page: {
@@ -92,6 +95,7 @@ const styles = StyleSheet.create({
   },
   segmentActif: { backgroundColor: COULEUR_PRIMAIRE },
   segmentInactif: { backgroundColor: COULEUR_MUTED },
+  segmentOr: { backgroundColor: COULEUR_OR },
   labelsRow: { flexDirection: "row", gap: 4, marginBottom: 12 },
   labelCell: {
     flex: 1,
@@ -102,6 +106,7 @@ const styles = StyleSheet.create({
   },
   labelActif: { color: COULEUR_PRIMAIRE, fontFamily: "Helvetica-Bold" },
   labelInactif: { color: COULEUR_MUTED_TEXT },
+  labelOr: { color: COULEUR_OR, fontFamily: "Helvetica-Bold" },
 
   // Bloc pré-requis
   prereqBloc: {
@@ -187,16 +192,16 @@ const styles = StyleSheet.create({
     textDecoration: "underline"
   },
 
-  // Bloc Expert
+  // Bloc Expert — accent doré CFO Masqué
   expertBloc: {
-    backgroundColor: COULEUR_PRIMAIRE_SOFT,
-    border: "1 solid " + COULEUR_PRIMAIRE,
+    backgroundColor: COULEUR_OR_BG,
+    border: "1 solid " + COULEUR_OR,
     borderRadius: 4,
     padding: 10
   },
   expertTexte: {
     fontSize: 10,
-    color: COULEUR_PRIMAIRE,
+    color: "#0F172A",
     fontFamily: "Helvetica-Bold"
   },
   pied: {
@@ -246,15 +251,20 @@ function BarreNiveauPDF({ niveau_atteint }: { niveau_atteint: NiveauSlug | null 
   const idx_atteint = niveau_atteint
     ? PALIERS.findIndex((p) => p.slug === niveau_atteint)
     : -1;
+  const expertAtteint = niveau_atteint === "expert";
   return (
     <View>
       <View style={styles.barreRow}>
         {PALIERS.map((p, i) => {
           const actif = i <= idx_atteint;
+          const dore = expertAtteint && p.slug === "expert";
           return (
             <View
               key={p.slug}
-              style={[styles.segment, actif ? styles.segmentActif : styles.segmentInactif]}
+              style={[
+                styles.segment,
+                dore ? styles.segmentOr : actif ? styles.segmentActif : styles.segmentInactif
+              ]}
             />
           );
         })}
@@ -262,10 +272,14 @@ function BarreNiveauPDF({ niveau_atteint }: { niveau_atteint: NiveauSlug | null 
       <View style={styles.labelsRow}>
         {PALIERS.map((p, i) => {
           const actif = i <= idx_atteint;
+          const dore = expertAtteint && p.slug === "expert";
           return (
             <Text
               key={p.slug}
-              style={[styles.labelCell, actif ? styles.labelActif : styles.labelInactif]}
+              style={[
+                styles.labelCell,
+                dore ? styles.labelOr : actif ? styles.labelActif : styles.labelInactif
+              ]}
             >
               {p.label}
             </Text>
@@ -354,7 +368,7 @@ export function RapportPDF({ donnees }: { donnees: DonneesRapport }) {
           const reco = recoParDomaine.get(r.domaine_id);
           const estExpert = r.niveau_atteint === "expert";
           return (
-            <View key={r.domaine_id} style={styles.domaineCarte} wrap={false}>
+            <View key={r.domaine_id} style={styles.domaineCarte}>
               <View style={styles.domaineEntete}>
                 <Text style={styles.domaineNom}>{r.domaine_nom}</Text>
                 <Text style={styles.niveauTexte}>{r.niveau_nom}</Text>

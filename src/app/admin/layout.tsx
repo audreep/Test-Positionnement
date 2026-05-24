@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  BarChart3,
   GraduationCap,
   HelpCircle,
   LayoutDashboard,
@@ -11,6 +10,7 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getTranslations } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/brand/Logo";
 
 const t = getTranslations();
 
@@ -46,11 +46,8 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-screen bg-muted/30">
       <aside className="hidden w-64 shrink-0 border-r bg-card md:flex md:flex-col">
-        <div className="flex h-16 items-center gap-2 border-b px-6">
-          <div className="h-7 w-7 rounded-md bg-primary" aria-hidden />
-          <span className="text-sm font-semibold tracking-tight">
-            {t.marque.nom}
-          </span>
+        <div className="flex h-16 items-center border-b px-6">
+          <Logo />
         </div>
         <nav className="flex-1 space-y-1 p-4">
           {navigation.map((item) => (
