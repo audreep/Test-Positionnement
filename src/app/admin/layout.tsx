@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import {
+  FolderTree,
   GraduationCap,
   HelpCircle,
   LayoutDashboard,
@@ -23,6 +24,7 @@ export const revalidate = 0;
 
 const navigation = [
   { href: "/admin", label: t.admin.tableau_de_bord, icon: LayoutDashboard, exact: true },
+  { href: "/admin/domaines", label: t.admin.domaines, icon: FolderTree },
   { href: "/admin/questions", label: t.admin.questions, icon: HelpCircle },
   { href: "/admin/formations", label: t.admin.formations, icon: GraduationCap },
   { href: "/admin/clients", label: t.admin.clients, icon: Users }

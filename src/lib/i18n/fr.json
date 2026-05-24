@@ -109,7 +109,8 @@
     "stats_nb_clients": "Nombre de clients",
     "stats_nb_tests_complets": "Tests complétés",
     "stats_score_moyen": "Score moyen",
-    "stats_taux_completion": "Taux de complétion"
+    "stats_taux_completion": "Taux de complétion",
+    "domaines": "Domaines"
   },
   "commun": {
     "annuler": "Annuler",

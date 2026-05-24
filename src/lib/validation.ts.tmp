@@ -56,6 +56,34 @@ export const questionFormSchema = z.object({
   temps_alloue_secondes: z.coerce.number().int().min(10).max(600).default(60)
 });
 
+/**
+ * Schéma de création d'un domaine. Le slug est requis et figé après création
+ * (pas modifiable via PATCH — il est référencé dans i18n + chaînes de pré-requis).
+ */
+export const domaineCreateSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(2)
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, "Slug : minuscules, chiffres et tirets uniquement"),
+  nom: z.string().trim().min(2).max(100),
+  description: z.string().trim().max(500).nullable().optional(),
+  ordre: z.coerce.number().int().min(0).max(9999).default(0),
+  actif: z.coerce.boolean().default(true)
+});
+
+
+/**
+ * Schéma de mise à jour d'un domaine. SLUG NON MODIFIABLE après création.
+ */
+export const domaineUpdateSchema = z.object({
+  nom: z.string().trim().min(2).max(100).optional(),
+  description: z.string().trim().max(500).nullable().optional(),
+  ordre: z.coerce.number().int().min(0).max(9999).optional(),
+  actif: z.coerce.boolean().optional()
+});
+
 export const formationFormSchema = z.object({
   titre: z.string().trim().min(2).max(200),
   domaine_id: z.string().uuid(),
@@ -68,5 +96,8 @@ export const formationFormSchema = z.object({
 });
 
 export type IntakeInput = z.infer<typeof intakeSchema>;
+export type ReponseInput = z.infer<typeof reponseSchema>;
 export type QuestionFormInput = z.infer<typeof questionFormSchema>;
 export type FormationFormInput = z.infer<typeof formationFormSchema>;
+export type DomaineCreateInput = z.infer<typeof domaineCreateSchema>;
+export type DomaineUpdateInput = z.infer<typeof domaineUpdateSchema>;
