@@ -84,6 +84,9 @@ export interface Database {
           explication: string | null;
           ordre: number;
           actif: boolean;
+          // Délai en secondes alloué au client pour répondre. Default 60.
+          // À l'expiration, la réponse en cours est soumise automatiquement.
+          temps_alloue_secondes: number;
           cree_le: string;
           mise_a_jour_le: string;
         };
@@ -98,6 +101,7 @@ export interface Database {
           explication?: string | null;
           ordre?: number;
           actif?: boolean;
+          temps_alloue_secondes?: number;
         };
         Update: Partial<Database["public"]["Tables"]["questions"]["Insert"]>;
       };

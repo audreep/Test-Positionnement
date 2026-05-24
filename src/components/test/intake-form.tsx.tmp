@@ -297,30 +297,3 @@ export function IntakeForm({ domaines }: Props) {
     </Card>
   );
 }
-
-function Champ({ id, label, valeur, setValeur, erreur, required, type }: {
-  id: string; label: string; valeur: string; setValeur: (v: string) => void;
-  erreur?: string; required?: boolean; type?: string;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type={type ?? "text"} value={valeur} onChange={(e) => setValeur(e.target.value)} required={required} />
-      {erreur ? <p className="text-xs text-destructive">{erreur}</p> : null}
-    </div>
-  );
-}
-
-function CaseConsentement({ id, checked, setChecked, erreur, children }: {
-  id: string; checked: boolean; setChecked: (v: boolean) => void; erreur?: string; children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div className="flex items-start gap-3">
-        <Checkbox id={id} checked={checked} onCheckedChange={(v) => setChecked(Boolean(v))} />
-        <Label htmlFor={id} className="text-sm leading-relaxed">{children}</Label>
-      </div>
-      {erreur ? <p className="ml-7 mt-1 text-xs text-destructive">{erreur}</p> : null}
-    </div>
-  );
-}
