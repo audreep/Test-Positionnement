@@ -699,6 +699,18 @@ export interface DonneesRapport {
      */
     prerequis_chaine: Formation[];
   }>;
+  /**
+   * Domaines que le client a marqués comme « ne m'intéresse pas » au moment
+   * de l'auto-évaluation. Affichés à titre informatif dans le rapport avec
+   * une description du domaine et un lien vers la formation d'introduction
+   * (s'il y en a une). Style volontairement discret.
+   */
+  domaines_non_pertinents: Array<{
+    domaine_id: string;
+    domaine_nom: string;
+    domaine_slug: string;
+    formation_intro: Formation | null;
+  }>;
 }
 
 export async function chargerRapport(
@@ -740,6 +752,29 @@ export async function chargerRapport(
     };
   });
 
+  // Construit la liste des domaines marqués « non pertinent » au moment de
+  // l'auto-évaluation. Pour chacun, on associe la formation d'introduction
+  // (le niveau le plus bas disponible dans ce domaine, excluant les pures
+  // préparatoires) pour offrir une porte d'entrée si le client change d'avis.
+  const formationsActives = formations ?? [];
+  const domaines_non_pertinents: DonneesRapport["domaines_non_pertinents"] = [];
+  for (const dom of contexte.domaines) {
+    if (etat.auto_evaluations[dom.id] !== "non_pertinent") continue;
+    const introCandidates = formationsActives
+      .filter((f) => f.domaine_id === dom.id && f.actif && !f.est_prerequis_pur)
+      .map((f) => {
+        const n = contexte.niveaux.find((x) => x.id === f.niveau_id);
+        return { formation: f, ordre: n?.ordre ?? 99 };
+      })
+      .sort((a, b) => a.ordre - b.ordre);
+    domaines_non_pertinents.push({
+      domaine_id: dom.id,
+      domaine_nom: dom.nom,
+      domaine_slug: dom.slug,
+      formation_intro: introCandidates[0]?.formation ?? null
+    });
+  }
+
   const client = test.client as unknown as { prenom: string; nom: string; courriel: string };
   return {
     test_id: test.id,
@@ -751,6 +786,7 @@ export async function chargerRapport(
       domaine_nom: contexte.domaines.find((d) => d.id === r.domaine_id)?.nom ?? "",
       formation: r.formation,
       prerequis_chaine: r.prerequis_chaine
-    }))
+    })),
+    domaines_non_pertinents
   };
 }

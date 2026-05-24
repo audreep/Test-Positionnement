@@ -272,7 +272,7 @@ export function IntakeForm({ domaines }: Props) {
               Assurez-vous d&apos;avoir suffisamment de temps devant vous pour
               le compléter en une seule session.
               <br /><br />
-              <strong>Prévoir 15 à 30 minutes.</strong>
+              <strong>Prévoir 5 à 30 minutes.</strong>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="sm:justify-center">

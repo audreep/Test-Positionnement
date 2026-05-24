@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Download, ExternalLink, Trophy } from "lucide-react";
+import { Download, ExternalLink, Trophy, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -9,6 +9,8 @@ import { Logo } from "@/components/brand/Logo";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { chargerContexte, chargerRapport } from "@/lib/adaptive/runner";
 import { getTranslations } from "@/lib/i18n";
+
+const DESCRIPTIONS_DOMAINES = getTranslations().domaines_description as Record<string, string>;
 
 const t = getTranslations();
 
@@ -106,6 +108,42 @@ export default async function RapportPage({ params }: Props) {
             );
           })}
         </div>
+
+        {/* Domaines marqués « non pertinent » — affichés à titre informatif */}
+        {rapport.domaines_non_pertinents.length > 0 ? (
+          <div className="mt-8 rounded-md border border-dashed bg-muted/20 p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <Info className="h-4 w-4 text-muted-foreground" aria-hidden />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                {t.rapport.non_pertinent_titre}
+              </h2>
+            </div>
+            <p className="mb-4 text-xs text-muted-foreground">
+              {t.rapport.non_pertinent_intro}
+            </p>
+            <ul className="space-y-3">
+              {rapport.domaines_non_pertinents.map((d) => (
+                <li key={d.domaine_id} className="rounded-md bg-card p-3">
+                  <p className="text-sm font-medium text-foreground">{d.domaine_nom}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {DESCRIPTIONS_DOMAINES[d.domaine_slug] ?? ""}
+                  </p>
+                  {d.formation_intro ? (
+                    <a
+                      href={d.formation_intro.url_inscription}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
+                    >
+                      {t.rapport.non_pertinent_en_savoir_plus} : {d.formation_intro.titre}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <Separator className="my-8" />
 

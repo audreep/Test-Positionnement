@@ -5,8 +5,8 @@
   },
   "test": {
     "titre": "Test de positionnement Excel",
-    "sous_titre": "Évaluez vos compétences en 15 à 30 minutes et recevez des recommandations personnalisées.",
-    "duree_estimee": "15 à 30 minutes",
+    "sous_titre": "Évaluez vos compétences en 5 à 30 minutes et recevez des recommandations personnalisées.",
+    "duree_estimee": "5 à 30 minutes",
     "commencer": "Commencer le test",
     "continuer": "Continuer",
     "valider": "Valider et poursuivre",
@@ -67,7 +67,10 @@
     "non_evalue": "Non évalué",
     "voir_formation": "Voir la formation",
     "duree": "Durée",
-    "prix": "Prix"
+    "prix": "Prix",
+    "non_pertinent_titre": "Domaines non évalués",
+    "non_pertinent_intro": "Vous avez indiqué que ces domaines ne vous intéressent pas. À titre informatif, voici à quoi ils servent — au cas où vous changeriez d'avis.",
+    "non_pertinent_en_savoir_plus": "En savoir plus sur ce domaine"
   },
   "niveaux": {
     "debutant": "Débutant",
@@ -115,5 +118,13 @@
     "chargement": "Chargement…",
     "erreur": "Une erreur est survenue",
     "succes": "Opération réussie"
+  },
+  "domaines_description": {
+    "formules": "Maîtrisez les fonctions Excel (RECHERCHEV, INDEX/EQUIV, SOMME.SI.ENS, etc.) pour automatiser vos calculs et éliminer les erreurs manuelles dans vos analyses quotidiennes.",
+    "tableaux-croises-dynamiques": "Synthétisez de grands volumes de données en quelques clics et construisez des tableaux de bord interactifs qui répondent aux questions de votre direction.",
+    "modelisation-financiere": "Bâtissez des modèles prévisionnels robustes (états financiers, flux de trésorerie, analyses de sensibilité) pour appuyer vos décisions d'investissement et de gestion.",
+    "vba": "Automatisez les tâches répétitives via des macros et créez des outils personnalisés (formulaires, génération de PDF, envois de courriels) qui vous font gagner des heures chaque semaine.",
+    "power-query": "Importez, transformez et consolidez automatiquement des données provenant de multiples sources (fichiers, web, bases de données) sans copier-coller.",
+    "power-pivot": "Modélisez des données multi-sources avec relations et mesures DAX pour des analyses puissantes qui vont bien au-delà des limites traditionnelles d'Excel."
   }
 }

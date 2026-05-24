@@ -31,6 +31,10 @@ const COULEUR_AMBRE_TEXT = "#92400E";
 const COULEUR_OR = "#E5A823";
 const COULEUR_OR_BG = "#FEF6E1";
 
+const DESCRIPTIONS_DOMAINES = (t as unknown as {
+  domaines_description: Record<string, string>;
+}).domaines_description;
+
 const styles = StyleSheet.create({
   page: {
     padding: 48,
@@ -244,6 +248,51 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: COULEUR_MUTED_TEXT,
     lineHeight: 1.4
+  },
+
+  // Section domaines non pertinents (informationnelle, discrète)
+  nonPertinentSection: {
+    border: "1 dashed " + COULEUR_MUTED,
+    borderRadius: 4,
+    padding: 10,
+    marginTop: 12
+  },
+  nonPertinentTitre: {
+    fontSize: 9,
+    color: COULEUR_MUTED_TEXT,
+    fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 4
+  },
+  nonPertinentIntro: {
+    fontSize: 8,
+    color: COULEUR_MUTED_TEXT,
+    marginBottom: 6,
+    lineHeight: 1.4
+  },
+  nonPertinentItem: {
+    backgroundColor: "#FFFFFF",
+    padding: 6,
+    marginBottom: 4,
+    borderRadius: 3
+  },
+  nonPertinentNom: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: "#0F172A"
+  },
+  nonPertinentDescription: {
+    fontSize: 8,
+    color: COULEUR_MUTED_TEXT,
+    marginTop: 2,
+    lineHeight: 1.4
+  },
+  nonPertinentLien: {
+    fontSize: 8,
+    color: COULEUR_MUTED_TEXT,
+    textDecoration: "underline",
+    marginTop: 3
   }
 });
 
@@ -398,6 +447,34 @@ export function RapportPDF({ donnees }: { donnees: DonneesRapport }) {
             </View>
           );
         })}
+
+        {/* Domaines non pertinents — affichés à titre informatif */}
+        {donnees.domaines_non_pertinents.length > 0 ? (
+          <View style={styles.nonPertinentSection} wrap={false}>
+            <Text style={styles.nonPertinentTitre}>
+              {t.rapport.non_pertinent_titre}
+            </Text>
+            <Text style={styles.nonPertinentIntro}>
+              {t.rapport.non_pertinent_intro}
+            </Text>
+            {donnees.domaines_non_pertinents.map((d) => (
+              <View key={d.domaine_id} style={styles.nonPertinentItem}>
+                <Text style={styles.nonPertinentNom}>{d.domaine_nom}</Text>
+                <Text style={styles.nonPertinentDescription}>
+                  {DESCRIPTIONS_DOMAINES?.[d.domaine_slug] ?? ""}
+                </Text>
+                {d.formation_intro ? (
+                  <Link
+                    src={d.formation_intro.url_inscription}
+                    style={styles.nonPertinentLien}
+                  >
+                    {t.rapport.non_pertinent_en_savoir_plus} : {d.formation_intro.titre}
+                  </Link>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         <Text style={styles.pied} fixed>
           {t.marque.nom} • Rapport généré le {new Date().toLocaleDateString("fr-CA")}
