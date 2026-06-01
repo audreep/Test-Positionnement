@@ -1,4 +1,4 @@
-# Le CFO Masqué — Test de positionnement Excel
+# Le CFO Masqué — Évaluation de votre niveau Excel
 
 Application Next.js qui permet à un client potentiel d'évaluer son niveau Excel dans 6 domaines (Formules, Tableaux croisés dynamiques, Modélisation financière, VBA, Power Query, Power Pivot) et reçoit un rapport personnalisé avec des recommandations de formations.
 
@@ -155,11 +155,11 @@ Recopier toutes les variables de `.env.local` dans les paramètres du projet Ver
 
 ### 5.3. Premier déploiement
 
-Cliquer **Deploy**. Une fois en ligne, mettre à jour `NEXT_PUBLIC_APP_URL` avec l'URL de production (ex: `https://test.lecfomasque.com`) et redéployer.
+Cliquer **Deploy**. Une fois en ligne, mettre à jour `NEXT_PUBLIC_APP_URL` avec l'URL de production (ex: `https://evaluation.lecfomasque.com`) et redéployer.
 
 ### 5.4. Domaine personnalisé
 
-Configurer un sous-domaine `test.lecfomasque.com` dans Vercel → Settings → Domains et ajouter le CNAME chez le registraire DNS.
+Configurer un sous-domaine `evaluation.lecfomasque.com` dans Vercel → Settings → Domains et ajouter le CNAME chez le registraire DNS.
 
 ## 6. Tester le parcours complet
 

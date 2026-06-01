@@ -4,7 +4,7 @@
     "tagline": "Maîtrisez l'informatique décisionnelle"
   },
   "test": {
-    "titre": "Test de positionnement Excel",
+    "titre": "Évaluation de votre niveau Excel",
     "sous_titre": "Évaluez vos compétences en 5 à 30 minutes et recevez des recommandations personnalisées.",
     "duree_estimee": "5 à 30 minutes",
     "commencer": "Commencer le test",
@@ -15,7 +15,7 @@
     "transition_titre": "Section suivante",
     "transition_demarrer": "Démarrer cette section",
     "fin_titre": "Test complété !",
-    "fin_message": "Voici votre rapport de positionnement personnalisé.",
+    "fin_message": "Voici votre rapport d'évaluation personnalisé.",
     "deja_complete_titre": "Vous avez déjà complété ce test",
     "deja_complete_message": "Vous avez déjà complété le test récemment. Pour recevoir une copie de votre résultat le plus récent, écrivez à info@lecfomasque.com.",
     "deja_complete_message_date": "Vous avez déjà complété le test récemment. Vous pourrez le repasser à partir du {date}. Pour recevoir une copie de votre résultat le plus récent, écrivez à info@lecfomasque.com."
@@ -59,7 +59,7 @@
     "auto_eval_requise": "Veuillez évaluer votre niveau pour chaque domaine"
   },
   "rapport": {
-    "titre": "Votre rapport de positionnement Excel",
+    "titre": "Votre rapport d'évaluation Excel",
     "telecharger_pdf": "Télécharger le rapport en PDF",
     "score_global": "Score global",
     "scores_par_domaine": "Niveau atteint par domaine",
