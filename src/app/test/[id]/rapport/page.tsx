@@ -5,7 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { BarreNiveau } from "@/components/rapport/BarreNiveau";
+import { RadarDomaines } from "@/components/rapport/RadarDomaines";
+import { iconeDomaine } from "@/lib/domaines/icones";
+import { construirePlanFormation } from "@/lib/rapport/plan";
 import { Logo } from "@/components/brand/Logo";
+import { ListChecks } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { chargerContexte, chargerRapport } from "@/lib/adaptive/runner";
 import { getTranslations } from "@/lib/i18n";
@@ -32,6 +36,12 @@ export default async function RapportPage({ params }: Props) {
   const recoParDomaine = new Map(
     rapport.recommandations.map((r) => [r.domaine_id, r])
   );
+
+  // Domaines réellement évalués (hors « non évalués »), pour le radar.
+  const domainesRadar = rapport.resultats.filter((r) => !r.passe);
+
+  // Plan de formation consolidé (ordre logique, pré-requis d'abord).
+  const plan = construirePlanFormation(rapport.recommandations);
 
   return (
     <main className="min-h-screen bg-background">
@@ -76,16 +86,107 @@ export default async function RapportPage({ params }: Props) {
           </p>
         </div>
 
+        {/* Profil global — radar des domaines évalués */}
+        {domainesRadar.length >= 3 ? (
+          <Card className="mb-6 overflow-hidden">
+            <div className="h-1 w-full bg-accent" aria-hidden />
+            <CardContent className="flex flex-col items-center gap-6 py-6 sm:flex-row sm:items-center sm:gap-8">
+              <div className="shrink-0">
+                <RadarDomaines domaines={domainesRadar} />
+              </div>
+              <div className="text-center sm:text-left">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                  Votre profil
+                </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight">
+                  Vos compétences en un coup d&apos;œil
+                </h2>
+                <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                  Le radar synthétise votre niveau atteint dans chacun des
+                  domaines évalués. Plus la zone bleue s&apos;étend vers
+                  l&apos;extérieur, plus votre maîtrise est avancée. Le détail
+                  domaine par domaine, avec nos recommandations, suit ci-dessous.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {/* Plan de formation — résumé ordonné (pré-requis d'abord) */}
+        <Card className="mb-6 border-primary/30 bg-primary/[0.04]">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <ListChecks className="h-5 w-5" aria-hidden />
+              </span>
+              <CardTitle className="text-lg">Votre plan de formation</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {plan.length > 0 ? (
+              <>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Voici, dans l&apos;ordre logique à suivre (les pré-requis
+                  d&apos;abord), les formations recommandées d&apos;après vos
+                  résultats. Le détail domaine par domaine suit ci-dessous.
+                </p>
+                <ol className="space-y-2">
+                  {plan.map((etape, i) => (
+                    <li
+                      key={etape.formation.id}
+                      className="flex items-start gap-3 rounded-md border bg-card p-3"
+                    >
+                      <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-foreground">
+                          {etape.formation.titre}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {etape.domaine_nom}
+                          {etape.formation.duree ? " • " + etape.formation.duree : ""}
+                          {" • "}
+                          {etape.est_cible ? "Formation cible" : "Pré-requis"}
+                        </p>
+                      </div>
+                      <a
+                        href={etape.formation.url_inscription}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-0.5 shrink-0 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                      >
+                        Voir
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            ) : (
+              <p className="text-sm font-medium text-primary">
+                Bravo ! Aucune formation n&apos;est nécessaire : vous avez
+                atteint le plus haut niveau testé dans tous les domaines évalués.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="space-y-4">
           {rapport.resultats.map((r) => {
             const reco = recoParDomaine.get(r.domaine_id);
             const estExpert = r.niveau_atteint === "expert";
+            const IconeDom = iconeDomaine(r.domaine_slug);
             return (
-              <Card key={r.domaine_id}>
+              <Card key={r.domaine_id} className="overflow-hidden">
                 <CardHeader className="pb-3">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <CardTitle className="text-lg">{r.domaine_nom}</CardTitle>
-                    <span className="shrink-0 text-sm font-medium text-muted-foreground">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <IconeDom className="h-5 w-5" aria-hidden />
+                      </span>
+                      <CardTitle className="truncate text-lg">{r.domaine_nom}</CardTitle>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
                       {r.niveau_nom}
                     </span>
                   </div>

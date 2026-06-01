@@ -98,9 +98,10 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ test_id, statut });
   } catch (err) {
-    if ((err as Error & { code?: string }).code === "DEJA_COMPLETE") {
+    const e = err as Error & { code?: string; prochaine_date?: string };
+    if (e.code === "DEJA_COMPLETE") {
       return NextResponse.json(
-        { error: "Vous avez deja complete ce test. Communiquez avec nous pour le reinitialiser." },
+        { error: "DEJA_COMPLETE", prochaine_date: e.prochaine_date ?? null },
         { status: 409 }
       );
     }

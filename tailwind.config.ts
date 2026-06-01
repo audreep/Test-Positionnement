@@ -50,11 +50,12 @@ const config: Config = {
           foreground: "hsl(var(--popover-foreground))"
         },
         cfo: {
-          primary: "#0F4C5C",
-          "primary-soft": "#1d6f8b",
-          accent: "#E5A823",
-          "accent-soft": "#F4D06F",
-          ink: "#0F172A",
+          primary: "#2673BA",
+          "primary-soft": "#3A86C9",
+          "primary-deep": "#1B5C92",
+          accent: "#DA8F29",
+          "accent-soft": "#F0B860",
+          ink: "#2C3338",
           muted: "#64748B",
           surface: "#FFFFFF",
           background: "#F7F9FB",
@@ -63,7 +64,7 @@ const config: Config = {
         }
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"]
+        sans: ["var(--font-rubik)", "Rubik", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"]
       },
       borderRadius: {
         lg: "var(--radius)",

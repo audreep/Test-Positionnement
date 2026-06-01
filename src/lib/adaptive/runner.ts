@@ -25,6 +25,7 @@ import {
   type ResultatDomaine
 } from "./engine";
 import { construireRecommandations, scoreGlobal } from "./scoring";
+import { chargerParametres, dateRepriseEligible } from "@/lib/parametres";
 import type {
   Domaine,
   Formation,
@@ -610,16 +611,32 @@ export async function demarrerOuReprendreTest(
   auto_evaluations: Record<string, AutoEvaluation>,
   contexte: ContexteTest
 ): Promise<{ test_id: string; statut: "en_cours" | "complete" }> {
-  const { data: deja_complet } = await supabase
+  // Règle de reprise : on ne bloque QUE si le dernier test complété date de
+  // moins de `delai_reprise_mois` mois (paramètre configurable en admin).
+  // Au-delà du délai, le client peut repasser le test (nouveau test créé).
+  const { data: dernier_complet } = await supabase
     .from("tests")
-    .select("id")
+    .select("id, date_fin")
     .eq("client_id", client_id)
     .eq("statut", "complete")
+    .order("date_fin", { ascending: false })
+    .limit(1)
     .maybeSingle();
-  if (deja_complet) {
-    const err = new Error("DEJA_COMPLETE");
-    (err as Error & { code?: string }).code = "DEJA_COMPLETE";
-    throw err;
+
+  if (dernier_complet?.date_fin) {
+    const { delai_reprise_mois } = await chargerParametres(supabase);
+    if (delai_reprise_mois > 0) {
+      const eligible = dateRepriseEligible(dernier_complet.date_fin, delai_reprise_mois);
+      if (eligible.getTime() > Date.now()) {
+        const err = new Error("DEJA_COMPLETE") as Error & {
+          code?: string;
+          prochaine_date?: string;
+        };
+        err.code = "DEJA_COMPLETE";
+        err.prochaine_date = eligible.toISOString();
+        throw err;
+      }
+    }
   }
 
   // Test en cours ? → reprise : on garde les domaines déjà finalisés.
@@ -746,7 +763,7 @@ export async function chargerRapport(
       domaine_nom: dom?.nom ?? "",
       domaine_slug: dom?.slug ?? "",
       niveau_atteint: r.niveau_atteint,
-      niveau_nom: r.passe ? "Non évalué" : niveau?.nom ?? "Aucun",
+      niveau_nom: r.passe ? "Non évalué" : niveau?.nom ?? "Novice",
       passe: r.passe,
       pourcentage: r.pourcentage
     };

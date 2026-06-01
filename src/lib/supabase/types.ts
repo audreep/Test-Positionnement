@@ -221,6 +221,19 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["scores_par_domaine"]["Insert"]>;
       };
+      parametres: {
+        Row: {
+          id: number;
+          delai_reprise_mois: number;
+          mise_a_jour_le: string;
+        };
+        Insert: {
+          id?: number;
+          delai_reprise_mois?: number;
+          mise_a_jour_le?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["parametres"]["Insert"]>;
+      };
     };
     Views: { [key: string]: never };
     Functions: { [key: string]: never };
@@ -237,3 +250,4 @@ export type Client = Database["public"]["Tables"]["clients"]["Row"];
 export type Test = Database["public"]["Tables"]["tests"]["Row"];
 export type Reponse = Database["public"]["Tables"]["reponses"]["Row"];
 export type ScoreParDomaine = Database["public"]["Tables"]["scores_par_domaine"]["Row"];
+export type Parametres = Database["public"]["Tables"]["parametres"]["Row"];

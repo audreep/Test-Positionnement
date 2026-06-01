@@ -10,6 +10,9 @@ import {
 import type { DonneesRapport } from "@/lib/adaptive/runner";
 import type { Formation, NiveauSlug } from "@/lib/supabase/types";
 import { getTranslations } from "@/lib/i18n";
+import { RadarPDF } from "@/lib/pdf/RadarPDF";
+import { IconeDomainePDF } from "@/lib/pdf/IconeDomainePDF";
+import { construirePlanFormation } from "@/lib/rapport/plan";
 
 const t = getTranslations();
 
@@ -20,15 +23,15 @@ const PALIERS: Array<{ slug: NiveauSlug; label: string }> = [
   { slug: "expert", label: "Expert" }
 ];
 
-const COULEUR_PRIMAIRE = "#0F4C5C";
-const COULEUR_PRIMAIRE_SOFT = "#E6EEF1";
+const COULEUR_PRIMAIRE = "#2673BA";
+const COULEUR_PRIMAIRE_SOFT = "#E6F1FB";
 const COULEUR_MUTED = "#E2E8F0";
 const COULEUR_MUTED_TEXT = "#64748B";
 const COULEUR_AMBRE = "#F59E0B";
 const COULEUR_AMBRE_BG = "#FFFBEB";
 const COULEUR_AMBRE_TEXT = "#92400E";
 // Accent doré CFO Masqué (utilisé pour mettre en valeur le niveau Expert atteint)
-const COULEUR_OR = "#E5A823";
+const COULEUR_OR = "#DA8F29";
 const COULEUR_OR_BG = "#FEF6E1";
 
 const DESCRIPTIONS_DOMAINES = (t as unknown as {
@@ -65,6 +68,104 @@ const styles = StyleSheet.create({
     color: COULEUR_MUTED_TEXT,
     marginTop: 4
   },
+  // Carte « profil » — radar de vue d'ensemble
+  profilCarte: {
+    border: "1 solid " + COULEUR_MUTED,
+    borderTop: "3 solid " + COULEUR_OR,
+    borderRadius: 6,
+    padding: 14,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  profilRadar: {
+    width: 210,
+    marginRight: 8
+  },
+  profilTexte: {
+    flex: 1,
+    paddingLeft: 4
+  },
+  profilLabel: {
+    fontSize: 8,
+    color: COULEUR_PRIMAIRE,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 3
+  },
+  profilTitre: {
+    fontSize: 13,
+    fontFamily: "Helvetica-Bold",
+    color: "#0F172A",
+    marginBottom: 4
+  },
+  profilIntro: {
+    fontSize: 9,
+    color: COULEUR_MUTED_TEXT,
+    lineHeight: 1.45
+  },
+
+  // Plan de formation (résumé ordonné, page 1)
+  planCarte: {
+    backgroundColor: COULEUR_PRIMAIRE_SOFT,
+    border: "1 solid " + COULEUR_PRIMAIRE,
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 16
+  },
+  planTitre: {
+    fontSize: 12,
+    fontFamily: "Helvetica-Bold",
+    color: COULEUR_PRIMAIRE,
+    marginBottom: 2
+  },
+  planIntro: {
+    fontSize: 8.5,
+    color: COULEUR_MUTED_TEXT,
+    lineHeight: 1.4,
+    marginBottom: 8
+  },
+  planLigne: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 6
+  },
+  planNum: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: COULEUR_PRIMAIRE,
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    textAlign: "center",
+    paddingTop: 3,
+    marginRight: 8
+  },
+  planContenu: { flex: 1 },
+  planFormTitre: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    color: "#0F172A"
+  },
+  planFormLien: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    color: COULEUR_PRIMAIRE,
+    textDecoration: "underline"
+  },
+  planMeta: {
+    fontSize: 8,
+    color: COULEUR_MUTED_TEXT,
+    marginTop: 1
+  },
+  planVide: {
+    fontSize: 9,
+    color: COULEUR_PRIMAIRE,
+    fontFamily: "Helvetica-Bold",
+    lineHeight: 1.4
+  },
   domaineCarte: {
     border: "1 solid " + COULEUR_MUTED,
     borderRadius: 6,
@@ -74,13 +175,36 @@ const styles = StyleSheet.create({
   domaineEntete: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "baseline",
+    alignItems: "center",
     marginBottom: 10
+  },
+  domaineTitreGroupe: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1
+  },
+  iconeBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    backgroundColor: COULEUR_PRIMAIRE_SOFT,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8
   },
   domaineNom: {
     fontSize: 13,
     fontFamily: "Helvetica-Bold",
     color: "#0F172A"
+  },
+  niveauPastille: {
+    fontSize: 9,
+    color: "#FFFFFF",
+    backgroundColor: COULEUR_PRIMAIRE,
+    fontFamily: "Helvetica-Bold",
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 10
   },
   niveauTexte: {
     fontSize: 10,
@@ -100,6 +224,13 @@ const styles = StyleSheet.create({
   segmentActif: { backgroundColor: COULEUR_PRIMAIRE },
   segmentInactif: { backgroundColor: COULEUR_MUTED },
   segmentOr: { backgroundColor: COULEUR_OR },
+  // Segment Débutant partiellement rempli (niveau « Aucun », en route)
+  segmentEnRouteFill: {
+    height: 6,
+    width: "35%",
+    backgroundColor: "#6FA3D6",
+    borderRadius: 3
+  },
   labelsRow: { flexDirection: "row", gap: 4, marginBottom: 12 },
   labelCell: {
     flex: 1,
@@ -111,6 +242,7 @@ const styles = StyleSheet.create({
   labelActif: { color: COULEUR_PRIMAIRE, fontFamily: "Helvetica-Bold" },
   labelInactif: { color: COULEUR_MUTED_TEXT },
   labelOr: { color: COULEUR_OR, fontFamily: "Helvetica-Bold" },
+  labelEnRoute: { color: "#6FA3D6", fontFamily: "Helvetica-Bold" },
 
   // Bloc pré-requis
   prereqBloc: {
@@ -301,12 +433,21 @@ function BarreNiveauPDF({ niveau_atteint }: { niveau_atteint: NiveauSlug | null 
     ? PALIERS.findIndex((p) => p.slug === niveau_atteint)
     : -1;
   const expertAtteint = niveau_atteint === "expert";
+  const enRoute = idx_atteint === -1; // « Aucun » → progression vers Débutant
   return (
     <View>
       <View style={styles.barreRow}>
         {PALIERS.map((p, i) => {
           const actif = i <= idx_atteint;
           const dore = expertAtteint && p.slug === "expert";
+          const partiel = enRoute && i === 0;
+          if (partiel) {
+            return (
+              <View key={p.slug} style={[styles.segment, styles.segmentInactif]}>
+                <View style={styles.segmentEnRouteFill} />
+              </View>
+            );
+          }
           return (
             <View
               key={p.slug}
@@ -322,12 +463,19 @@ function BarreNiveauPDF({ niveau_atteint }: { niveau_atteint: NiveauSlug | null 
         {PALIERS.map((p, i) => {
           const actif = i <= idx_atteint;
           const dore = expertAtteint && p.slug === "expert";
+          const partiel = enRoute && i === 0;
           return (
             <Text
               key={p.slug}
               style={[
                 styles.labelCell,
-                dore ? styles.labelOr : actif ? styles.labelActif : styles.labelInactif
+                dore
+                  ? styles.labelOr
+                  : actif
+                    ? styles.labelActif
+                    : partiel
+                      ? styles.labelEnRoute
+                      : styles.labelInactif
               ]}
             >
               {p.label}
@@ -375,6 +523,12 @@ export function RapportPDF({ donnees }: { donnees: DonneesRapport }) {
     donnees.recommandations.map((r) => [r.domaine_id, r])
   );
 
+  // Domaines réellement évalués (hors « non évalués »), pour le radar.
+  const domainesRadar = donnees.resultats.filter((r) => !r.passe);
+
+  // Plan de formation consolidé (ordre logique, pré-requis d'abord).
+  const plan = construirePlanFormation(donnees.recommandations);
+
   return (
     <Document title={`${t.rapport.titre} – ${donnees.client.prenom} ${donnees.client.nom}`}>
       <Page size="A4" style={styles.page}>
@@ -406,14 +560,74 @@ export function RapportPDF({ donnees }: { donnees: DonneesRapport }) {
           </Text>
         </View>
 
+        {/* Profil global — radar des domaines évalués */}
+        {domainesRadar.length >= 3 ? (
+          <View style={styles.profilCarte} wrap={false}>
+            <View style={styles.profilRadar}>
+              <RadarPDF domaines={domainesRadar} />
+            </View>
+            <View style={styles.profilTexte}>
+              <Text style={styles.profilLabel}>Votre profil</Text>
+              <Text style={styles.profilTitre}>
+                Vos compétences en un coup d&apos;œil
+              </Text>
+              <Text style={styles.profilIntro}>
+                Le radar synthétise votre niveau atteint dans chacun des domaines
+                évalués. Plus la zone bleue s&apos;étend vers l&apos;extérieur,
+                plus votre maîtrise est avancée. Le détail domaine par domaine,
+                avec nos recommandations, suit ci-dessous.
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Plan de formation — résumé ordonné (page 1) */}
+        <View style={styles.planCarte} wrap={false}>
+          <Text style={styles.planTitre}>Votre plan de formation</Text>
+          {plan.length > 0 ? (
+            <>
+              <Text style={styles.planIntro}>
+                Voici, dans l&apos;ordre logique à suivre (les pré-requis
+                d&apos;abord), les formations recommandées d&apos;après vos
+                résultats. Le détail par domaine suit dans les pages suivantes.
+              </Text>
+              {plan.map((etape, i) => (
+                <View key={etape.formation.id} style={styles.planLigne}>
+                  <Text style={styles.planNum}>{i + 1}</Text>
+                  <View style={styles.planContenu}>
+                    <Link src={etape.formation.url_inscription} style={styles.planFormLien}>
+                      {etape.formation.titre}
+                    </Link>
+                    <Text style={styles.planMeta}>
+                      {etape.domaine_nom}
+                      {etape.formation.duree ? " • " + etape.formation.duree : ""}
+                      {etape.est_cible ? " • Formation cible" : " • Pré-requis"}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </>
+          ) : (
+            <Text style={styles.planVide}>
+              Bravo ! Aucune formation n&apos;est nécessaire : vous avez atteint
+              le plus haut niveau testé dans tous les domaines évalués.
+            </Text>
+          )}
+        </View>
+
         {donnees.resultats.map((r) => {
           const reco = recoParDomaine.get(r.domaine_id);
           const estExpert = r.niveau_atteint === "expert";
           return (
-            <View key={r.domaine_id} style={styles.domaineCarte}>
+            <View key={r.domaine_id} style={styles.domaineCarte} wrap={false}>
               <View style={styles.domaineEntete}>
-                <Text style={styles.domaineNom}>{r.domaine_nom}</Text>
-                <Text style={styles.niveauTexte}>{r.niveau_nom}</Text>
+                <View style={styles.domaineTitreGroupe}>
+                  <View style={styles.iconeBadge}>
+                    <IconeDomainePDF slug={r.domaine_slug} couleur={COULEUR_PRIMAIRE} />
+                  </View>
+                  <Text style={styles.domaineNom}>{r.domaine_nom}</Text>
+                </View>
+                <Text style={styles.niveauPastille}>{r.niveau_nom}</Text>
               </View>
 
               <BarreNiveauPDF niveau_atteint={r.niveau_atteint} />

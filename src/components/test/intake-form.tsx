@@ -107,6 +107,19 @@ export function IntakeForm({ domaines }: Props) {
       const data = await res.json();
       if (!res.ok) {
         setDonneesValidees(null);
+        if (res.status === 409 && data.error === "DEJA_COMPLETE") {
+          if (data.prochaine_date) {
+            const dateStr = new Date(data.prochaine_date).toLocaleDateString("fr-CA", {
+              year: "numeric",
+              month: "long",
+              day: "numeric"
+            });
+            setErreurGenerale(tr(t.test.deja_complete_message_date, { date: dateStr }));
+          } else {
+            setErreurGenerale(t.test.deja_complete_message);
+          }
+          return;
+        }
         setErreurGenerale(data.error ?? t.commun.erreur);
         return;
       }

@@ -5,6 +5,10 @@ import type { NiveauSlug } from "@/lib/supabase/types";
  * domaine. Le niveau atteint et les niveaux précédents sont colorés ; le
  * palier Expert est mis en valeur en DORÉ (accent CFO Masqué) quand atteint
  * — c'est le sommet du parcours. Les niveaux non atteints restent grisés.
+ *
+ * Cas « Aucun » (niveau_atteint = null) : la personne n'a pas encore validé le
+ * palier Débutant. On remplit PARTIELLEMENT le premier segment pour signifier
+ * « en route vers Débutant » plutôt que de laisser la barre entièrement vide.
  */
 const PALIERS: Array<{ slug: NiveauSlug; label: string }> = [
   { slug: "debutant",       label: "Débutant" },
@@ -12,6 +16,9 @@ const PALIERS: Array<{ slug: NiveauSlug; label: string }> = [
   { slug: "avance",         label: "Avancé" },
   { slug: "expert",         label: "Expert" }
 ];
+
+// Proportion remplie du segment Débutant lorsque le niveau est « Aucun ».
+const FRACTION_EN_ROUTE = "35%";
 
 interface Props {
   niveau_atteint: NiveauSlug | null;
@@ -22,6 +29,7 @@ export function BarreNiveau({ niveau_atteint }: Props) {
     ? PALIERS.findIndex((p) => p.slug === niveau_atteint)
     : -1;
   const expert_atteint = niveau_atteint === "expert";
+  const en_route = idx_atteint === -1; // aucun palier validé → progression vers Débutant
 
   return (
     <div className="space-y-2">
@@ -29,6 +37,23 @@ export function BarreNiveau({ niveau_atteint }: Props) {
         {PALIERS.map((p, i) => {
           const actif = i <= idx_atteint;
           const dore = expert_atteint && p.slug === "expert";
+          const partiel = en_route && i === 0;
+
+          if (partiel) {
+            return (
+              <div
+                key={p.slug}
+                className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted"
+                aria-hidden="true"
+              >
+                <div
+                  className="h-full rounded-full bg-primary/70"
+                  style={{ width: FRACTION_EN_ROUTE }}
+                />
+              </div>
+            );
+          }
+
           return (
             <div
               key={p.slug}
@@ -45,6 +70,7 @@ export function BarreNiveau({ niveau_atteint }: Props) {
         {PALIERS.map((p, i) => {
           const actif = i <= idx_atteint;
           const dore = expert_atteint && p.slug === "expert";
+          const partiel = en_route && i === 0;
           return (
             <div
               key={p.slug}
@@ -54,7 +80,9 @@ export function BarreNiveau({ niveau_atteint }: Props) {
                   ? "font-semibold text-accent"
                   : actif
                     ? "font-semibold text-primary"
-                    : "text-muted-foreground")
+                    : partiel
+                      ? "font-medium text-primary/70"
+                      : "text-muted-foreground")
               }
             >
               {p.label}

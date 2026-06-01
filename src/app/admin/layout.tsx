@@ -7,6 +7,7 @@ import {
   HelpCircle,
   LayoutDashboard,
   LogOut,
+  Settings,
   Users
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -27,7 +28,8 @@ const navigation = [
   { href: "/admin/domaines", label: t.admin.domaines, icon: FolderTree },
   { href: "/admin/questions", label: t.admin.questions, icon: HelpCircle },
   { href: "/admin/formations", label: t.admin.formations, icon: GraduationCap },
-  { href: "/admin/clients", label: t.admin.clients, icon: Users }
+  { href: "/admin/clients", label: t.admin.clients, icon: Users },
+  { href: "/admin/parametres", label: t.admin.parametres, icon: Settings }
 ];
 
 export default async function AdminLayout({

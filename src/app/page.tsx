@@ -4,21 +4,23 @@ import { ArrowRight, BarChart3, ClipboardCheck, Sparkles, Facebook, Instagram, L
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/Logo";
 import { getTranslations } from "@/lib/i18n";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { chargerParametres } from "@/lib/parametres";
 
 const t = getTranslations();
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  // Lecture du délai de reprise configuré (pour l'afficher aux visiteurs).
+  const { delai_reprise_mois } = await chargerParametres(createSupabaseAdminClient());
+
   return (
     <main className="min-h-screen flex flex-col">
-      {/* En-tête blanc avec logo + nav */}
+      {/* En-tête blanc avec logo */}
       <header className="border-b bg-white">
-        <div className="container-app flex h-16 items-center justify-between">
+        <div className="container-app flex h-16 items-center">
           <Logo />
-          <nav className="text-sm text-muted-foreground">
-            <Link href="/admin" className="hover:text-foreground">
-              Espace admin
-            </Link>
-          </nav>
         </div>
       </header>
 
@@ -30,11 +32,20 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Hero teal marqué */}
+      {/* Hero bleu marqué */}
       <section className="relative overflow-hidden bg-primary text-primary-foreground">
+        {/* Formes décoratives (rappel du branding du site) */}
+        <div
+          className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-white/10"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-32 -left-16 h-72 w-72 rounded-full bg-white/[0.07]"
+          aria-hidden
+        />
         {/* Bandeau décoratif doré */}
-        <div className="absolute inset-x-0 bottom-0 h-1 bg-accent" aria-hidden />
-        <div className="container-app py-20 sm:py-28">
+        <div className="absolute inset-x-0 bottom-0 h-1.5 bg-accent" aria-hidden />
+        <div className="relative container-app py-20 sm:py-28">
           <div className="mx-auto max-w-3xl text-center">
             <p className="mb-3 text-sm font-medium uppercase tracking-[0.2em] text-accent">
               {t.marque.tagline}
@@ -60,6 +71,12 @@ export default function HomePage() {
                 ⏱ {t.test.duree_estimee}
               </span>
             </div>
+            {delai_reprise_mois > 0 ? (
+              <p className="mt-6 text-sm text-primary-foreground/80">
+                À noter qu&apos;il est possible de passer le test une fois par
+                période de {delai_reprise_mois} mois.
+              </p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -115,7 +132,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer teal marqué */}
+      {/* Footer bleu marqué */}
       <footer className="bg-primary text-primary-foreground">
         <div className="container-app py-10">
           <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
@@ -141,14 +158,22 @@ export default function HomePage() {
                 <Youtube className="h-5 w-5" />
               </a>
             </div>
-            <a
-              href={process.env.NEXT_PUBLIC_PRIVACY_POLICY_URL ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary-foreground/70 hover:text-accent"
-            >
-              Politique de confidentialité
-            </a>
+            <div className="flex items-center gap-4">
+              <a
+                href={process.env.NEXT_PUBLIC_PRIVACY_POLICY_URL ?? "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary-foreground/70 hover:text-accent"
+              >
+                Politique de confidentialité
+              </a>
+              <Link
+                href="/admin"
+                className="text-xs text-primary-foreground/50 hover:text-accent"
+              >
+                Espace admin
+              </Link>
+            </div>
           </div>
         </div>
       </footer>

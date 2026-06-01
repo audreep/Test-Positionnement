@@ -82,6 +82,27 @@ export default async function ClientDetailPage({ params }: Props) {
                 </div>
               </div>
 
+              {test.statut === "complete" ? (
+                <div className="mt-3 flex flex-wrap gap-4">
+                  <a
+                    href={"/test/" + test.id + "/rapport"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    Voir le rapport
+                  </a>
+                  <a
+                    href={"/api/test/" + test.id + "/pdf"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    Télécharger le PDF
+                  </a>
+                </div>
+              ) : null}
+
               {test.scores && Array.isArray(test.scores) && test.scores.length > 0 ? (
                 <table className="mt-3 w-full text-sm">
                   <thead className="text-xs uppercase text-muted-foreground">

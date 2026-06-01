@@ -17,7 +17,8 @@
     "fin_titre": "Test complété !",
     "fin_message": "Voici votre rapport de positionnement personnalisé.",
     "deja_complete_titre": "Vous avez déjà complété ce test",
-    "deja_complete_message": "Une seule passation par adresse courriel est permise. Communiquez avec nous pour réinitialiser votre test si nécessaire."
+    "deja_complete_message": "Vous avez déjà complété le test récemment. Pour recevoir une copie de votre résultat le plus récent, écrivez à info@lecfomasque.com.",
+    "deja_complete_message_date": "Vous avez déjà complété le test récemment. Vous pourrez le repasser à partir du {date}. Pour recevoir une copie de votre résultat le plus récent, écrivez à info@lecfomasque.com."
   },
   "intake": {
     "titre": "Vos informations",
@@ -36,9 +37,9 @@
     "auto_evaluation_titre": "Comment évaluez-vous votre niveau actuel ?",
     "auto_evaluation_sous_titre": "Pour chacun des domaines ci-dessous, indiquez où vous vous situez. Le test ajustera la difficulté en conséquence. Vous gagnerez du temps !",
     "auto_evaluation_choix": {
-      "novice": "Novice",
-      "a_laise": "À l'aise",
-      "expert": "Expert",
+      "novice": "Débutant",
+      "a_laise": "Intermédiaire",
+      "expert": "Avancé",
       "skip": "Je ne connais pas"
     },
     "auto_evaluation_aide": {
@@ -110,7 +111,8 @@
     "stats_nb_tests_complets": "Tests complétés",
     "stats_score_moyen": "Score moyen",
     "stats_taux_completion": "Taux de complétion",
-    "domaines": "Domaines"
+    "domaines": "Domaines",
+    "parametres": "Paramètres"
   },
   "commun": {
     "annuler": "Annuler",
