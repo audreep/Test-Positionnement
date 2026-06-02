@@ -10,6 +10,8 @@
     "commencer": "Commencer le test",
     "continuer": "Continuer",
     "valider": "Valider et poursuivre",
+    "je_ne_sais_pas": "Je ne sais pas",
+    "je_ne_sais_pas_aide": "Choisissez cette option plutôt que de répondre au hasard : elle sera comptée comme non maîtrisée.",
     "progression": "Domaine {actuel} sur {total}",
     "question_numero": "Question {numero}",
     "transition_titre": "Section suivante",

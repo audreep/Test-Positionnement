@@ -9,6 +9,14 @@ import { getTranslations } from "@/lib/i18n";
 
 const t = getTranslations();
 
+/**
+ * Valeur sentinelle pour l'option « Je ne sais pas » des questions à choix.
+ * Permet de passer la question plutôt que de répondre au hasard. Comme elle ne
+ * correspond à aucune bonne réponse, `reponseEstCorrecte` la traite comme une
+ * réponse incorrecte (compétence non maîtrisée) — c'est l'effet voulu.
+ */
+const JE_NE_SAIS_PAS = "__je_ne_sais_pas__";
+
 interface Props {
   question: {
     id: string;
@@ -137,6 +145,26 @@ export function QuestionView({ question, disabled, onSubmit }: Props) {
               </label>
             );
           })}
+
+          {/* Option « Je ne sais pas » : passer la question sans deviner. */}
+          <label
+            htmlFor={`opt-${question.id}-jnsp`}
+            className={`flex cursor-pointer items-start gap-3 rounded-md border border-dashed p-3 text-sm text-muted-foreground transition-colors hover:bg-accent/10 ${
+              reponse === JE_NE_SAIS_PAS ? "border-primary bg-primary/5 text-foreground" : ""
+            }`}
+          >
+            <input
+              id={`opt-${question.id}-jnsp`}
+              type="radio"
+              name={`reponse-${question.id}`}
+              value={JE_NE_SAIS_PAS}
+              checked={reponse === JE_NE_SAIS_PAS}
+              onChange={() => setReponse(JE_NE_SAIS_PAS)}
+              className="mt-1"
+            />
+            <span>{t.test.je_ne_sais_pas}</span>
+          </label>
+          <p className="text-xs text-muted-foreground">{t.test.je_ne_sais_pas_aide}</p>
         </fieldset>
       ) : null}
 

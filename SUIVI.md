@@ -6,6 +6,13 @@ Journal des modifications, par date. La plus récente en haut.
 
 ## 2 juin 2026
 
+### Option « Je ne sais pas » aux questions à choix (code — à déployer)
+- Ajout d'une option **« Je ne sais pas »** sous les choix, pour les questions de type **choix multiple** et **cas pratique** — permet de passer une question au lieu de répondre au hasard.
+- Implémentée à l'affichage (`question-view.tsx`) via une valeur sentinelle ; aucune modification de la banque de questions.
+- **Scoring** : comptée comme **réponse incorrecte** (compétence non maîtrisée). Le moteur adaptatif (blocs de 3) est inchangé. Donne un score plus juste qu'un coup de chance.
+- Libellés ajoutés dans `fr.json` (`test.je_ne_sais_pas`, `test.je_ne_sais_pas_aide`).
+- Vrai/Faux non touché (choix volontaire).
+
 ### Validation du courriel — refus des domaines internationalisés (code — à déployer)
 - **Problème** : un courriel à domaine accentué (ex. « lecfomasqué.com », autocorrection de « lecfomasque.com ») était encodé en Punycode par le navigateur (« xn--lecfomasqu-k7a.com ») puis enregistré tel quel, et s'affichait ainsi dans le rapport/PDF.
 - **Correctif** : `intakeSchema.courriel` refuse désormais les domaines IDN — étiquette Punycode `xn--` ou caractères non ASCII — avec un message invitant à saisir une adresse valide (sans accent ni caractère spécial). S'applique côté formulaire ET côté API (même schéma Zod).
