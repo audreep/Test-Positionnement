@@ -103,8 +103,8 @@ begin
   -- ===== FORMULES =====
   -- "Excel - Les bases" : aucun pré-requis
   perform pg_temp.set_prereqs(f_mise_a_niv,  'Mise à niveau',    array[f_bases]::uuid[]);
-  -- Traitement requiert formellement MF N1 (PDF p.42)
-  perform pg_temp.set_prereqs(f_traitement,  'Traitement',       array[f_mf1]::uuid[]);
+  -- Traitement requiert Mise à niveau (corrigé : ce n'est PAS MF N1).
+  perform pg_temp.set_prereqs(f_traitement,  'Traitement',       array[f_mise_a_niv]::uuid[]);
 
   -- ===== TCD =====
   -- TdB N1 requiert Mise à niveau (cross-domaine vers Formules, PDF p.24)

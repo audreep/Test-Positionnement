@@ -52,7 +52,7 @@ export default async function RapportPage({ params }: Props) {
         </div>
       </header>
 
-      <div className="container-narrow py-12">
+      <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 py-12">
         <header className="mb-8 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             {t.marque.tagline}
