@@ -4,6 +4,22 @@ import { z } from "zod";
  * Schemas Zod pour valider les entrees utilisateur et les payloads d'API.
  */
 
+/**
+ * Refuse les domaines internationalises (IDN). Un domaine accentue saisi par
+ * l'utilisateur (ex. « lecfomasqué.com », souvent une autocorrection de
+ * « lecfomasque.com ») est converti en Punycode par le navigateur
+ * (« xn--lecfomasqu-k7a.com ») avant l'envoi. On detecte les deux formes — le
+ * Punycode (etiquette « xn-- ») et les caracteres non ASCII — pour forcer
+ * l'utilisateur a saisir une adresse standard plutot que d'enregistrer une
+ * valeur encodee, probablement erronee et non delivrable.
+ */
+function courrielSansIdn(valeur: string): boolean {
+  if (/[^\x00-\x7F]/.test(valeur)) return false; // accents / caracteres non ASCII
+  const domaine = valeur.split("@")[1] ?? "";
+  if (/(^|\.)xn--/i.test(domaine)) return false; // etiquette Punycode
+  return true;
+}
+
 export const sourceAcquisitionSchema = z.enum([
   "google",
   "linkedin",
@@ -23,7 +39,16 @@ export const autoEvaluationSchema = z.enum([
 export const intakeSchema = z.object({
   prenom: z.string().trim().min(1, "Le prenom est requis").max(80),
   nom: z.string().trim().min(1, "Le nom est requis").max(80),
-  courriel: z.string().trim().toLowerCase().email("Adresse courriel invalide").max(160),
+  courriel: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Adresse courriel invalide")
+    .max(160)
+    .refine(courrielSansIdn, {
+      message:
+        "Veuillez saisir une adresse courriel valide (vérifiez le domaine, sans accent ni caractère spécial)."
+    }),
   source_acquisition: sourceAcquisitionSchema,
   consentement_marketing: z.literal(true, {
     errorMap: () => ({ message: "Vous devez consentir pour continuer." })

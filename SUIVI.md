@@ -6,6 +6,14 @@ Journal des modifications, par date. La plus récente en haut.
 
 ## 2 juin 2026
 
+### Validation du courriel — refus des domaines internationalisés (code — à déployer)
+- **Problème** : un courriel à domaine accentué (ex. « lecfomasqué.com », autocorrection de « lecfomasque.com ») était encodé en Punycode par le navigateur (« xn--lecfomasqu-k7a.com ») puis enregistré tel quel, et s'affichait ainsi dans le rapport/PDF.
+- **Correctif** : `intakeSchema.courriel` refuse désormais les domaines IDN — étiquette Punycode `xn--` ou caractères non ASCII — avec un message invitant à saisir une adresse valide (sans accent ni caractère spécial). S'applique côté formulaire ET côté API (même schéma Zod).
+- À noter : la fiche existante de Ouafae Boubouh contient encore l'adresse encodée ; à corriger manuellement en base si souhaité (probablement `oboubouh@lecfomasque.com`).
+
+### Rapport à l'écran — radar agrandi (code — à déployer)
+- Le radar de profil passait de `max-w-[330px]` à **`max-w-[440px]`** (largeur à l'écran). Inchangé dans le PDF.
+
 ### Rapport à l'écran élargi (code — à déployer)
 - La page du rapport passait par `container-narrow` (~672 px), jugée trop étroite. Élargie à `max-w-4xl` (~896 px).
 - Changement local à la page rapport seulement : le parcours du test (qui partage `container-narrow`) garde sa largeur étroite, adaptée à la lecture des questions.

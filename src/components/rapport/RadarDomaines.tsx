@@ -40,7 +40,7 @@ export function RadarDomaines({ domaines }: { domaines: DomaineRadar[] }) {
   return (
     <svg
       viewBox={`${-PAD_X} 0 ${TAILLE + PAD_X * 2} ${TAILLE}`}
-      className="h-auto w-full max-w-[330px]"
+      className="h-auto w-full max-w-[440px]"
       role="img"
       aria-label="Radar de votre niveau par domaine"
     >
