@@ -11,11 +11,11 @@ interface Ctx { params: { id: string } }
 export async function POST(_request: Request, { params }: Ctx) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  if (user?.app_metadata?.role !== "admin") return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   // La cascade sur tests supprime automatiquement les réponses et scores.
   const { error } = await supabase
-    .from("tests")
+    .from("tp_tests")
     .delete()
     .eq("client_id", params.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

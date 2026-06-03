@@ -55,7 +55,8 @@ export default async function AdminLayout({
     data: { user }
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  // Auth CRM partagée : rôle admin requis (les comptes vendeur sont refusés).
+  if (!user || user.app_metadata?.role !== "admin") {
     redirect("/admin/login");
   }
 

@@ -9,7 +9,7 @@ import { questionFormSchema } from "@/lib/validation";
 export async function POST(request: Request) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  if (user?.app_metadata?.role !== "admin") {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   }
 
   const { error, data } = await supabase
-    .from("questions")
+    .from("tp_questions")
     .insert(parsed.data)
     .select("id")
     .single();

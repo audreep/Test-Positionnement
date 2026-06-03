@@ -15,14 +15,14 @@ export const runtime = "nodejs";
 export async function GET() {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  if (user?.app_metadata?.role !== "admin") return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   // On récupère tous les tests avec leur client et scores par domaine.
   const { data, error } = await supabase
-    .from("tests")
+    .from("tp_tests")
     .select(`
       id, statut, score_global, date_debut, date_fin,
-      client:clients(prenom, nom, courriel, source_acquisition, consentement_marketing),
+      client:tp_clients(prenom, nom, courriel, source_acquisition, consentement_marketing),
       scores:scores_par_domaine(
         pourcentage, nb_reponses, nb_correctes, passe,
         domaine:domaines(nom, slug),

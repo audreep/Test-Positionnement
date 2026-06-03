@@ -16,7 +16,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  if (user?.app_metadata?.role !== "admin") return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   const body = await request.json();
   const parsed = domaineCreateSchema.safeParse(body);
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   // Vérifie l'unicité du slug avant insertion.
   const { data: existant } = await supabase
-    .from("domaines")
+    .from("tp_domaines")
     .select("id")
     .eq("slug", parsed.data.slug)
     .maybeSingle();
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   }
 
   const { data, error } = await supabase
-    .from("domaines")
+    .from("tp_domaines")
     .insert(parsed.data)
     .select("id")
     .single();

@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   // Upsert client par courriel normalise.
   const courriel = parsed.data.courriel.trim().toLowerCase();
   const { data: existant } = await supabase
-    .from("clients")
+    .from("tp_clients")
     .select("id")
     .eq("courriel_normalise", courriel)
     .maybeSingle();
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   if (existant) {
     client_id = existant.id;
     await supabase
-      .from("clients")
+      .from("tp_clients")
       .update({
         prenom: parsed.data.prenom,
         nom: parsed.data.nom,
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       .eq("id", client_id);
   } else {
     const { data: cree, error } = await supabase
-      .from("clients")
+      .from("tp_clients")
       .insert({
         prenom: parsed.data.prenom,
         nom: parsed.data.nom,

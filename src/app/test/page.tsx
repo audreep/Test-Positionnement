@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function TestLandingPage() {
   const supabase = createSupabaseAdminClient();
   const { data: domaines } = await supabase
-    .from("domaines")
+    .from("tp_domaines")
     .select("id, slug, nom, description")
     .eq("actif", true)
     .order("ordre");

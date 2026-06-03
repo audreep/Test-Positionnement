@@ -19,7 +19,7 @@ export const runtime = "nodejs";
 export async function PATCH(request: Request, { params }: Ctx) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  if (user?.app_metadata?.role !== "admin") return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   const body = await request.json();
   const parsed = domaineUpdateSchema.safeParse(body);
@@ -31,7 +31,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
   }
 
   const { error } = await supabase
-    .from("domaines")
+    .from("tp_domaines")
     .update(parsed.data)
     .eq("id", params.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -41,14 +41,14 @@ export async function PATCH(request: Request, { params }: Ctx) {
 export async function DELETE(_request: Request, { params }: Ctx) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  if (user?.app_metadata?.role !== "admin") return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   // Garde-fou : refuser la suppression si des questions ou formations existent.
   // Ces données seraient orphelines (le foreign key sur questions.domaine_id
   // bloquerait de toute façon, mais on retourne un message clair).
   const [{ count: nbQuestions }, { count: nbFormations }] = await Promise.all([
-    supabase.from("questions").select("id", { count: "exact", head: true }).eq("domaine_id", params.id),
-    supabase.from("formations").select("id", { count: "exact", head: true }).eq("domaine_id", params.id)
+    supabase.from("tp_questions").select("id", { count: "exact", head: true }).eq("domaine_id", params.id),
+    supabase.from("tp_formations").select("id", { count: "exact", head: true }).eq("domaine_id", params.id)
   ]);
 
   if ((nbQuestions ?? 0) > 0 || (nbFormations ?? 0) > 0) {
@@ -65,7 +65,7 @@ export async function DELETE(_request: Request, { params }: Ctx) {
     );
   }
 
-  const { error } = await supabase.from("domaines").delete().eq("id", params.id);
+  const { error } = await supabase.from("tp_domaines").delete().eq("id", params.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

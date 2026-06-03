@@ -10,9 +10,9 @@ export default async function ModifierQuestionPage({ params }: Props) {
   const supabase = createSupabaseServerClient();
   const [{ data: question }, { data: domaines }, { data: niveaux }] =
     await Promise.all([
-      supabase.from("questions").select("*").eq("id", params.id).maybeSingle(),
-      supabase.from("domaines").select("id, nom").order("ordre"),
-      supabase.from("niveaux").select("id, nom, ordre").order("ordre")
+      supabase.from("tp_questions").select("*").eq("id", params.id).maybeSingle(),
+      supabase.from("tp_domaines").select("id, nom").order("ordre"),
+      supabase.from("tp_niveaux").select("id, nom, ordre").order("ordre")
     ]);
 
   if (!question) notFound();

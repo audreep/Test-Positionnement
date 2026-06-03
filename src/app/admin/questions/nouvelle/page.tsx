@@ -4,8 +4,8 @@ import { QuestionForm } from "@/components/admin/question-form";
 export default async function NouvelleQuestionPage() {
   const supabase = createSupabaseServerClient();
   const [{ data: domaines }, { data: niveaux }] = await Promise.all([
-    supabase.from("domaines").select("id, nom").order("ordre"),
-    supabase.from("niveaux").select("id, nom, ordre").order("ordre")
+    supabase.from("tp_domaines").select("id, nom").order("ordre"),
+    supabase.from("tp_niveaux").select("id, nom, ordre").order("ordre")
   ]);
 
   return (

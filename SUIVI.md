@@ -4,6 +4,18 @@ Journal des modifications, par date. La plus récente en haut.
 
 ---
 
+## 3 juin 2026
+
+### Fusion Supabase : projet « Test Positionnement » → projet CRM (code — à déployer)
+- **Pourquoi** : réduire les frais Supabase (3 projets forçaient le plan Pro ; objectif 1 seul projet = 25 $/mois).
+- **Base de données** : les 9 tables ont été recréées dans le projet CRM (`mxmbohhycupvkzvxuyjn`) avec le préfixe **`tp_`** (`tp_questions`, `tp_clients`, etc.) pour éviter toute collision avec les tables du CRM. Données copiées intégralement (312 questions, 19 formations, clients/tests/réponses), triggers et index reproduits. RLS resserré : lecture/écriture réservées au rôle `admin` (le parcours public passe par la clé service_role, inchangé).
+- **Code** : tous les `.from("...")` et relations imbriquées renommés `tp_*` (y compris `types.ts`) ; `.env.local` et `.env.example` pointent vers le projet CRM.
+- **Auth admin = comptes CRM** : seuls les comptes avec `app_metadata.role = 'admin'` (pellerin.audree@gmail.com, kleblanc@lecfomasque.com) ont accès à `/admin` — vérifié dans le middleware, le layout, la page de login et les 15 routes API admin.
+- **À faire pour déployer** : (1) mettre à jour les 3 variables Supabase sur Vercel (URL + anon + service_role du projet CRM), (2) commit + push, (3) tester le parcours public + l'admin, (4) demander à Claude la synchro finale des données, (5) supprimer le projet Supabase « Test Positionnement ».
+- ⚠️ Incident durant la séance : un renommage en masse via la sandbox a corrompu des fichiers (cache OneDrive) ; restauration complète via « Discard all changes » (Git) puis réapplication fiable. Leçon : les modifications de code de ce projet doivent passer par l'accès direct Windows.
+
+---
+
 ## 2 juin 2026
 
 ### Option « Je ne sais pas » aux questions à choix (code — à déployer)

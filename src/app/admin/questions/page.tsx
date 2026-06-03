@@ -21,7 +21,7 @@ export default async function AdminQuestionsPage() {
 
   const [questionsRes, domainesRes, niveauxRes] = await Promise.all([
     supabase
-      .from("questions")
+      .from("tp_questions")
       .select(`
         id, enonce, type, actif, ordre, domaine_id, niveau_id,
         domaine:domaines(nom),
@@ -29,8 +29,8 @@ export default async function AdminQuestionsPage() {
       `)
       .order("ordre", { ascending: true })
       .limit(1000),
-    supabase.from("domaines").select("id, nom").eq("actif", true).order("ordre"),
-    supabase.from("niveaux").select("id, nom, ordre").order("ordre")
+    supabase.from("tp_domaines").select("id, nom").eq("actif", true).order("ordre"),
+    supabase.from("tp_niveaux").select("id, nom, ordre").order("ordre")
   ]);
 
   const questions = ((questionsRes.data ?? []) as unknown as QuestionAvecJoin[]).map((q) => ({

@@ -17,7 +17,7 @@ export async function chargerParametres(
   supabase: SupabaseClient
 ): Promise<ConfigApp> {
   const { data } = await supabase
-    .from("parametres")
+    .from("tp_parametres")
     .select("delai_reprise_mois")
     .eq("id", 1)
     .maybeSingle();
@@ -35,7 +35,7 @@ export async function majDelaiReprise(
   supabase: SupabaseClient,
   mois: number
 ): Promise<void> {
-  await supabase.from("parametres").upsert(
+  await supabase.from("tp_parametres").upsert(
     {
       id: 1,
       delai_reprise_mois: mois,

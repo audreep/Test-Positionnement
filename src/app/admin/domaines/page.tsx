@@ -20,7 +20,7 @@ export default async function AdminDomainesPage() {
   const supabase = createSupabaseServerClient();
 
   const { data: domaines } = await supabase
-    .from("domaines")
+    .from("tp_domaines")
     .select("id, slug, nom, description, ordre, actif")
     .order("ordre", { ascending: true });
 
@@ -29,8 +29,8 @@ export default async function AdminDomainesPage() {
   // Compte questions et formations par domaine (en parallèle, queries simples).
   const ids = liste.map((d) => d.id);
   const [{ data: questionsBrutes }, { data: formationsBrutes }] = await Promise.all([
-    supabase.from("questions").select("domaine_id, actif").in("domaine_id", ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"]),
-    supabase.from("formations").select("domaine_id, actif").in("domaine_id", ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"])
+    supabase.from("tp_questions").select("domaine_id, actif").in("domaine_id", ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"]),
+    supabase.from("tp_formations").select("domaine_id, actif").in("domaine_id", ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"])
   ]);
   const compterPar = (arr: Array<{ domaine_id: string; actif: boolean }> | null) => {
     const m = new Map<string, { actif: number; total: number }>();

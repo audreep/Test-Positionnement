@@ -25,13 +25,23 @@ export default function AdminLoginPage() {
     setEnCours(true);
 
     const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: courriel,
       password: motDePasse
     });
 
     if (error) {
       setErreur(error.message);
+      setEnCours(false);
+      return;
+    }
+
+    // Auth CRM partagée : seuls les comptes admin du CRM ont accès.
+    if (data.user?.app_metadata?.role !== "admin") {
+      await supabase.auth.signOut();
+      setErreur(
+        "Ce compte n'a pas accès à l'administration du test (rôle admin requis)."
+      );
       setEnCours(false);
       return;
     }

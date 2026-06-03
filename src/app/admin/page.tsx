@@ -16,14 +16,14 @@ export default async function AdminDashboardPage() {
     { count: nb_tests_total },
     { data: scores }
   ] = await Promise.all([
-    supabase.from("clients").select("id", { count: "exact", head: true }),
+    supabase.from("tp_clients").select("id", { count: "exact", head: true }),
     supabase
-      .from("tests")
+      .from("tp_tests")
       .select("id", { count: "exact", head: true })
       .eq("statut", "complete"),
-    supabase.from("tests").select("id", { count: "exact", head: true }),
+    supabase.from("tp_tests").select("id", { count: "exact", head: true }),
     supabase
-      .from("tests")
+      .from("tp_tests")
       .select("score_global")
       .eq("statut", "complete")
       .not("score_global", "is", null)

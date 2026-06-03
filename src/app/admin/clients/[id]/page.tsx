@@ -11,14 +11,14 @@ export default async function ClientDetailPage({ params }: Props) {
   const supabase = createSupabaseServerClient();
 
   const { data: client } = await supabase
-    .from("clients")
+    .from("tp_clients")
     .select("*")
     .eq("id", params.id)
     .maybeSingle();
   if (!client) notFound();
 
   const { data: tests } = await supabase
-    .from("tests")
+    .from("tp_tests")
     .select(`
       id, statut, score_global, date_debut, date_fin,
       scores:scores_par_domaine(

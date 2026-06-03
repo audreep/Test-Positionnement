@@ -10,7 +10,7 @@ const t = getTranslations();
 export default async function AdminFormationsPage() {
   const supabase = createSupabaseServerClient();
   const { data: formations } = await supabase
-    .from("formations")
+    .from("tp_formations")
     .select(`id, titre, duree, prix, url_inscription, actif,
              domaine:domaines(nom), niveau:niveaux(nom, ordre)`)
     .order("titre");

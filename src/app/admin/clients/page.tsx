@@ -13,7 +13,7 @@ export default async function AdminClientsPage() {
 
   // Pour Phase 1, on récupère les clients + leur dernier test.
   const { data: clients } = await supabase
-    .from("clients")
+    .from("tp_clients")
     .select(`
       id, prenom, nom, courriel, source_acquisition, consentement_marketing,
       date_consentement, cree_le,

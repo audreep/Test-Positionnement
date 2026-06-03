@@ -14,7 +14,7 @@ interface Ctx { params: { id: string } }
 export async function PATCH(request: Request, { params }: Ctx) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  if (user?.app_metadata?.role !== "admin") return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   const body = await request.json();
   const parsed = questionFormSchema.partial().safeParse(body);
@@ -26,7 +26,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
   }
 
   const { error } = await supabase
-    .from("questions")
+    .from("tp_questions")
     .update(parsed.data)
     .eq("id", params.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -36,10 +36,10 @@ export async function PATCH(request: Request, { params }: Ctx) {
 export async function DELETE(_request: Request, { params }: Ctx) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  if (user?.app_metadata?.role !== "admin") return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   const { error } = await supabase
-    .from("questions")
+    .from("tp_questions")
     .update({ actif: false })
     .eq("id", params.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

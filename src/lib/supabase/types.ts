@@ -44,7 +44,7 @@ export interface QuestionOption {
 export interface Database {
   public: {
     Tables: {
-      domaines: {
+      tp_domaines: {
         Row: {
           id: string;
           slug: DomaineSlug | string;
@@ -54,13 +54,13 @@ export interface Database {
           actif: boolean;
           cree_le: string;
         };
-        Insert: Partial<Omit<Database["public"]["Tables"]["domaines"]["Row"], "id" | "cree_le">> & {
+        Insert: Partial<Omit<Database["public"]["Tables"]["tp_domaines"]["Row"], "id" | "cree_le">> & {
           slug: string;
           nom: string;
         };
-        Update: Partial<Database["public"]["Tables"]["domaines"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["tp_domaines"]["Row"]>;
       };
-      niveaux: {
+      tp_niveaux: {
         Row: {
           id: string;
           slug: NiveauSlug;
@@ -69,9 +69,9 @@ export interface Database {
           cree_le: string;
         };
         Insert: { slug: NiveauSlug; nom: string; ordre: number };
-        Update: Partial<Database["public"]["Tables"]["niveaux"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["tp_niveaux"]["Row"]>;
       };
-      questions: {
+      tp_questions: {
         Row: {
           id: string;
           domaine_id: string;
@@ -103,9 +103,9 @@ export interface Database {
           actif?: boolean;
           temps_alloue_secondes?: number;
         };
-        Update: Partial<Database["public"]["Tables"]["questions"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["tp_questions"]["Insert"]>;
       };
-      formations: {
+      tp_formations: {
         Row: {
           id: string;
           titre: string;
@@ -137,9 +137,9 @@ export interface Database {
           prerequis_ids?: string[];
           est_prerequis_pur?: boolean;
         };
-        Update: Partial<Database["public"]["Tables"]["formations"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["tp_formations"]["Insert"]>;
       };
-      clients: {
+      tp_clients: {
         Row: {
           id: string;
           prenom: string;
@@ -158,9 +158,9 @@ export interface Database {
           source_acquisition: SourceAcquisition;
           consentement_marketing: boolean;
         };
-        Update: Partial<Database["public"]["Tables"]["clients"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["tp_clients"]["Insert"]>;
       };
-      tests: {
+      tp_tests: {
         Row: {
           id: string;
           client_id: string;
@@ -177,9 +177,9 @@ export interface Database {
           statut?: StatutTest;
           donnees_etat?: Json;
         };
-        Update: Partial<Database["public"]["Tables"]["tests"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["tp_tests"]["Row"]>;
       };
-      reponses: {
+      tp_reponses: {
         Row: {
           id: string;
           test_id: string;
@@ -196,9 +196,9 @@ export interface Database {
           correct: boolean;
           temps_passe_ms?: number | null;
         };
-        Update: Partial<Database["public"]["Tables"]["reponses"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["tp_reponses"]["Insert"]>;
       };
-      scores_par_domaine: {
+      tp_scores_par_domaine: {
         Row: {
           id: string;
           test_id: string;
@@ -219,9 +219,9 @@ export interface Database {
           nb_correctes: number;
           passe?: boolean;
         };
-        Update: Partial<Database["public"]["Tables"]["scores_par_domaine"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["tp_scores_par_domaine"]["Insert"]>;
       };
-      parametres: {
+      tp_parametres: {
         Row: {
           id: number;
           delai_reprise_mois: number;
@@ -242,12 +242,12 @@ export interface Database {
   };
 }
 
-export type Domaine = Database["public"]["Tables"]["domaines"]["Row"];
-export type Niveau = Database["public"]["Tables"]["niveaux"]["Row"];
-export type Question = Database["public"]["Tables"]["questions"]["Row"];
-export type Formation = Database["public"]["Tables"]["formations"]["Row"];
-export type Client = Database["public"]["Tables"]["clients"]["Row"];
-export type Test = Database["public"]["Tables"]["tests"]["Row"];
-export type Reponse = Database["public"]["Tables"]["reponses"]["Row"];
-export type ScoreParDomaine = Database["public"]["Tables"]["scores_par_domaine"]["Row"];
+export type Domaine = Database["public"]["Tables"]["tp_domaines"]["Row"];
+export type Niveau = Database["public"]["Tables"]["tp_niveaux"]["Row"];
+export type Question = Database["public"]["Tables"]["tp_questions"]["Row"];
+export type Formation = Database["public"]["Tables"]["tp_formations"]["Row"];
+export type Client = Database["public"]["Tables"]["tp_clients"]["Row"];
+export type Test = Database["public"]["Tables"]["tp_tests"]["Row"];
+export type Reponse = Database["public"]["Tables"]["tp_reponses"]["Row"];
+export type ScoreParDomaine = Database["public"]["Tables"]["tp_scores_par_domaine"]["Row"];
 export type Parametres = Database["public"]["Tables"]["parametres"]["Row"];

@@ -8,7 +8,7 @@ interface Props { params: { id: string } }
 export default async function ModifierDomainePage({ params }: Props) {
   const supabase = createSupabaseServerClient();
   const { data: domaine } = await supabase
-    .from("domaines")
+    .from("tp_domaines")
     .select("*")
     .eq("id", params.id)
     .maybeSingle();

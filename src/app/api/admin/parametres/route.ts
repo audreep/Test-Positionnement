@@ -14,7 +14,7 @@ import { chargerParametres, majDelaiReprise } from "@/lib/parametres";
 export async function GET() {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  if (user?.app_metadata?.role !== "admin") return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   const admin = createSupabaseAdminClient();
   const params = await chargerParametres(admin);
@@ -24,7 +24,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  if (user?.app_metadata?.role !== "admin") return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   const body = await request.json().catch(() => null);
   const valeur = body?.delai_reprise_mois;

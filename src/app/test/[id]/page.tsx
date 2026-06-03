@@ -21,7 +21,7 @@ interface Props { params: { id: string } }
 export default async function TestSessionPage({ params }: Props) {
   const supabase = createSupabaseAdminClient();
   const { data: test } = await supabase
-    .from("tests")
+    .from("tp_tests")
     .select("id, statut, donnees_etat")
     .eq("id", params.id)
     .maybeSingle();

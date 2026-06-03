@@ -21,7 +21,7 @@ const bulkSchema = z.object({
 export async function POST(request: Request) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  if (user?.app_metadata?.role !== "admin") return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   const body = await request.json();
   const parsed = bulkSchema.safeParse(body);
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const nouveau_actif = action === "activer";
 
   const { error, count } = await supabase
-    .from("questions")
+    .from("tp_questions")
     .update({ actif: nouveau_actif }, { count: "exact" })
     .in("id", ids);
 

@@ -43,8 +43,8 @@ export interface ContexteTest {
 
 export async function chargerContexte(supabase: Sb): Promise<ContexteTest> {
   const [domRes, nivRes] = await Promise.all([
-    supabase.from("domaines").select("*").eq("actif", true).order("ordre"),
-    supabase.from("niveaux").select("*").order("ordre")
+    supabase.from("tp_domaines").select("*").eq("actif", true).order("ordre"),
+    supabase.from("tp_niveaux").select("*").order("ordre")
   ]);
   if (domRes.error || nivRes.error) {
     const detail = [
@@ -68,7 +68,7 @@ async function chargerBanque(
   niveau_id: string
 ): Promise<Question[]> {
   const { data } = await supabase
-    .from("questions")
+    .from("tp_questions")
     .select("*")
     .eq("domaine_id", domaine_id)
     .eq("niveau_id", niveau_id)
@@ -185,7 +185,7 @@ export async function construireVueClient(
   let question: Question | null = null;
   if (etat.question_courante_id) {
     const { data } = await supabase
-      .from("questions")
+      .from("tp_questions")
       .select("*")
       .eq("id", etat.question_courante_id)
       .maybeSingle();
@@ -318,7 +318,7 @@ async function persisterScoreParDomaine(
   const niveau_atteint_id = resultat.niveau_atteint
     ? niveauIdParSlug(contexte.niveaux, resultat.niveau_atteint)
     : null;
-  await supabase.from("scores_par_domaine").upsert(
+  await supabase.from("tp_scores_par_domaine").upsert(
     {
       test_id,
       domaine_id: resultat.domaine_id,
@@ -344,7 +344,7 @@ export async function soumettreReponse(
   contexte: ContexteTest
 ): Promise<{ vue: VueClient }> {
   const { data: test } = await supabase
-    .from("tests")
+    .from("tp_tests")
     .select("*")
     .eq("id", test_id)
     .maybeSingle();
@@ -371,7 +371,7 @@ export async function soumettreReponse(
   }
 
   const { data: question } = await supabase
-    .from("questions")
+    .from("tp_questions")
     .select("*")
     .eq("id", question_id)
     .maybeSingle();
@@ -379,7 +379,7 @@ export async function soumettreReponse(
 
   const correct = reponseEstCorrecte(question, reponse_donnee);
 
-  await supabase.from("reponses").insert({
+  await supabase.from("tp_reponses").insert({
     test_id,
     question_id,
     reponse_donnee: reponse_donnee ?? null,
@@ -429,7 +429,7 @@ export async function soumettreReponse(
     nouveau_statut = "complete";
     await completerTest(supabase, test_id, nouvel_etat);
   } else {
-    await supabase.from("tests").update({ donnees_etat: nouvel_etat }).eq("id", test_id);
+    await supabase.from("tp_tests").update({ donnees_etat: nouvel_etat }).eq("id", test_id);
   }
 
   return {
@@ -447,8 +447,8 @@ async function finaliserEtAvancer(
   const domaine = contexte.domaines[etat.domaine_actuel_idx];
   // Toutes les réponses du domaine courant.
   const { data: toutes } = await supabase
-    .from("reponses")
-    .select("correct, question:questions!inner(domaine_id)")
+    .from("tp_reponses")
+    .select("correct, question:tp_questions!inner(domaine_id)")
     .eq("test_id", test_id);
   const reponses_domaine = (toutes ?? []).filter((r) => {
     const dom = (r.question as unknown as { domaine_id: string } | null)?.domaine_id;
@@ -549,14 +549,14 @@ export async function reparerEtatBloque(
   if (courant.domaine_actuel_idx < contexte.domaines.length) {
     const prep = await preparerNouvelleQuestion(supabase, contexte, courant);
     if (prep.question) {
-      await supabase.from("tests").update({ donnees_etat: prep.etat }).eq("id", test_id);
+      await supabase.from("tp_tests").update({ donnees_etat: prep.etat }).eq("id", test_id);
       return { etat: prep.etat, statut: "en_cours" };
     }
     // Cas 2 : aucune question, même en fallback. Finaliser ce domaine.
     const domaine = contexte.domaines[courant.domaine_actuel_idx];
     const { data: toutes } = await supabase
-      .from("reponses")
-      .select("correct, question:questions!inner(domaine_id)")
+      .from("tp_reponses")
+      .select("correct, question:tp_questions!inner(domaine_id)")
       .eq("test_id", test_id);
     const reponses_dom = (toutes ?? []).filter((r) => {
       const dom = (r.question as unknown as { domaine_id: string } | null)?.domaine_id;
@@ -585,14 +585,14 @@ export async function reparerEtatBloque(
     await completerTest(supabase, test_id, courant);
     return { etat: courant, statut: "complete" };
   }
-  await supabase.from("tests").update({ donnees_etat: courant }).eq("id", test_id);
+  await supabase.from("tp_tests").update({ donnees_etat: courant }).eq("id", test_id);
   return { etat: courant, statut: "en_cours" };
 }
 
 async function completerTest(supabase: Sb, test_id: string, etat: EtatTest) {
   const score = scoreGlobal(etat.resultats_domaines);
   await supabase
-    .from("tests")
+    .from("tp_tests")
     .update({
       statut: "complete",
       date_fin: new Date().toISOString(),
@@ -615,7 +615,7 @@ export async function demarrerOuReprendreTest(
   // moins de `delai_reprise_mois` mois (paramètre configurable en admin).
   // Au-delà du délai, le client peut repasser le test (nouveau test créé).
   const { data: dernier_complet } = await supabase
-    .from("tests")
+    .from("tp_tests")
     .select("id, date_fin")
     .eq("client_id", client_id)
     .eq("statut", "complete")
@@ -641,7 +641,7 @@ export async function demarrerOuReprendreTest(
 
   // Test en cours ? → reprise : on garde les domaines déjà finalisés.
   const { data: en_cours } = await supabase
-    .from("tests")
+    .from("tp_tests")
     .select("id, donnees_etat")
     .eq("client_id", client_id)
     .eq("statut", "en_cours")
@@ -663,7 +663,7 @@ export async function demarrerOuReprendreTest(
       await completerTest(supabase, en_cours.id, repris);
       return { test_id: en_cours.id, statut: "complete" };
     }
-    await supabase.from("tests").update({ donnees_etat: repris }).eq("id", en_cours.id);
+    await supabase.from("tp_tests").update({ donnees_etat: repris }).eq("id", en_cours.id);
     await persisterTousLesSkipped(supabase, en_cours.id, repris, contexte);
     return { test_id: en_cours.id, statut: "en_cours" };
   }
@@ -671,14 +671,14 @@ export async function demarrerOuReprendreTest(
   // Nouveau test.
   const etat0 = etatInitial(auto_evaluations);
   const { data: nouveau } = await supabase
-    .from("tests")
+    .from("tp_tests")
     .insert({ client_id, statut: "en_cours", donnees_etat: etat0 })
     .select("id")
     .single();
   if (!nouveau) throw new Error("Impossible de créer le test");
 
   const etat = await prochainDomaineAvecQuestion(supabase, nouveau.id, contexte, etat0);
-  await supabase.from("tests").update({ donnees_etat: etat }).eq("id", nouveau.id);
+  await supabase.from("tp_tests").update({ donnees_etat: etat }).eq("id", nouveau.id);
   await persisterTousLesSkipped(supabase, nouveau.id, etat, contexte);
 
   // Si tous les domaines ont été skipped ou n'ont pas de questions → test déjà complete.
@@ -736,14 +736,14 @@ export async function chargerRapport(
   contexte: ContexteTest
 ): Promise<DonneesRapport | null> {
   const { data: test } = await supabase
-    .from("tests")
-    .select("id, score_global, statut, donnees_etat, client:clients(prenom, nom, courriel)")
+    .from("tp_tests")
+    .select("id, score_global, statut, donnees_etat, client:tp_clients(prenom, nom, courriel)")
     .eq("id", test_id)
     .maybeSingle();
   if (!test || test.statut !== "complete") return null;
   const etat = test.donnees_etat as EtatTest;
   const { data: formations } = await supabase
-    .from("formations")
+    .from("tp_formations")
     .select("*")
     .eq("actif", true);
 

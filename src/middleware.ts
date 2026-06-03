@@ -37,18 +37,21 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Auth CRM partagée (fusion juin 2026) : seuls les comptes avec
+  // app_metadata.role = 'admin' ont accès à l'admin du test.
+  const estAdmin = user?.app_metadata?.role === "admin";
 
   const { pathname } = request.nextUrl;
   const protege = pathname.startsWith("/admin") && !pathname.startsWith("/admin/login");
 
-  if (protege && !user) {
+  if (protege && !estAdmin) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 
-  if (pathname.startsWith("/admin/login") && user) {
+  if (pathname.startsWith("/admin/login") && estAdmin) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin";
     return NextResponse.redirect(url);

@@ -8,9 +8,9 @@ export default async function ModifierFormationPage({ params }: Props) {
   const supabase = createSupabaseServerClient();
   const [{ data: formation }, { data: domaines }, { data: niveaux }] =
     await Promise.all([
-      supabase.from("formations").select("*").eq("id", params.id).maybeSingle(),
-      supabase.from("domaines").select("id, nom").order("ordre"),
-      supabase.from("niveaux").select("id, nom, ordre").order("ordre")
+      supabase.from("tp_formations").select("*").eq("id", params.id).maybeSingle(),
+      supabase.from("tp_domaines").select("id, nom").order("ordre"),
+      supabase.from("tp_niveaux").select("id, nom, ordre").order("ordre")
     ]);
   if (!formation) notFound();
   return (
