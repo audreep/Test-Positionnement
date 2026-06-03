@@ -232,7 +232,7 @@ export interface Database {
           delai_reprise_mois?: number;
           mise_a_jour_le?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["parametres"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["tp_parametres"]["Insert"]>;
       };
     };
     Views: { [key: string]: never };
@@ -250,4 +250,4 @@ export type Client = Database["public"]["Tables"]["tp_clients"]["Row"];
 export type Test = Database["public"]["Tables"]["tp_tests"]["Row"];
 export type Reponse = Database["public"]["Tables"]["tp_reponses"]["Row"];
 export type ScoreParDomaine = Database["public"]["Tables"]["tp_scores_par_domaine"]["Row"];
-export type Parametres = Database["public"]["Tables"]["parametres"]["Row"];
+export type Parametres = Database["public"]["Tables"]["tp_parametres"]["Row"];
