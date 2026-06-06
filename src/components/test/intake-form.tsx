@@ -53,6 +53,7 @@ export function IntakeForm({ domaines }: Props) {
   const [source, setSource] = useState("");
   const [consentementMarketing, setConsentementMarketing] = useState(false);
   const [acceptePolitique, setAcceptePolitique] = useState(false);
+  const [infolettre, setInfolettre] = useState(false);
   const [autoEvals, setAutoEvals] = useState<Record<string, string>>({});
   // Données validées en attente de confirmation du popup d'avertissement.
   const [donneesValidees, setDonneesValidees] = useState<IntakeInput | null>(null);
@@ -80,6 +81,7 @@ export function IntakeForm({ domaines }: Props) {
       source_acquisition: source,
       consentement_marketing: consentementMarketing,
       accepte_politique: acceptePolitique,
+      infolettre,
       auto_evaluations: autoEvals
     });
 
@@ -250,11 +252,14 @@ export function IntakeForm({ domaines }: Props) {
               {t.intake.consentement_marketing}
             </CaseConsentement>
             <CaseConsentement id="politique" checked={acceptePolitique} setChecked={setAcceptePolitique} erreur={erreurs.accepte_politique}>
-              {tr(t.intake.consentement_politique, { lien_politique: "" })}
+              {t.intake.consentement_politique_avant}
               <a href={politiqueUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline-offset-2 hover:underline">
                 {" "}{t.intake.lien_politique}
               </a>
               .
+            </CaseConsentement>
+            <CaseConsentement id="infolettre" checked={infolettre} setChecked={setInfolettre}>
+              {t.intake.consentement_infolettre}
             </CaseConsentement>
           </div>
 

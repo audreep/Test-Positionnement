@@ -21,10 +21,10 @@ export default async function ClientDetailPage({ params }: Props) {
     .from("tp_tests")
     .select(`
       id, statut, score_global, date_debut, date_fin,
-      scores:scores_par_domaine(
+      scores:tp_scores_par_domaine(
         pourcentage, nb_reponses, nb_correctes, passe,
-        domaine:domaines(nom),
-        niveau_atteint:niveaux(nom)
+        domaine:tp_domaines(nom),
+        niveau_atteint:tp_niveaux(nom)
       )
     `)
     .eq("client_id", client.id)
@@ -49,6 +49,7 @@ export default async function ClientDetailPage({ params }: Props) {
         <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
           <Info label="Source d'acquisition" valeur={client.source_acquisition} />
           <Info label="Consentement marketing" valeur={client.consentement_marketing ? "Oui" : "Non"} />
+          <Info label="Abonnement infolettre" valeur={client.infolettre ? "Oui" : "Non"} />
           <Info label="Date du consentement" valeur={formatDateFr(client.date_consentement)} />
           <Info label="Compte créé le" valeur={formatDateFr(client.cree_le)} />
         </CardContent>

@@ -62,6 +62,7 @@ export async function POST(request: Request) {
         nom: parsed.data.nom,
         source_acquisition: parsed.data.source_acquisition,
         consentement_marketing: parsed.data.consentement_marketing,
+        infolettre: parsed.data.infolettre,
         date_consentement: new Date().toISOString()
       })
       .eq("id", client_id);
@@ -73,7 +74,8 @@ export async function POST(request: Request) {
         nom: parsed.data.nom,
         courriel: parsed.data.courriel,
         source_acquisition: parsed.data.source_acquisition,
-        consentement_marketing: parsed.data.consentement_marketing
+        consentement_marketing: parsed.data.consentement_marketing,
+        infolettre: parsed.data.infolettre
       })
       .select("id")
       .single();

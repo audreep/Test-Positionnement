@@ -169,25 +169,47 @@ export function QuestionView({ question, disabled, onSubmit }: Props) {
       ) : null}
 
       {question.type === "vrai_faux" ? (
-        <fieldset className="grid grid-cols-2 gap-3" disabled={disabled}>
-          {(["vrai", "faux"] as const).map((v) => (
-            <label
-              key={v}
-              className={`flex cursor-pointer items-center justify-center rounded-md border px-4 py-3 text-sm font-medium uppercase transition-colors hover:bg-accent/10 ${
-                reponse === v ? "border-primary bg-primary/5 text-primary" : ""
-              }`}
-            >
-              <input
-                type="radio"
-                name={`reponse-${question.id}`}
-                value={v}
-                checked={reponse === v}
-                onChange={() => setReponse(v)}
-                className="sr-only"
-              />
-              {v}
-            </label>
-          ))}
+        <fieldset className="space-y-2" disabled={disabled}>
+          <div className="grid grid-cols-2 gap-3">
+            {(["vrai", "faux"] as const).map((v) => (
+              <label
+                key={v}
+                className={`flex cursor-pointer items-center justify-center rounded-md border px-4 py-3 text-sm font-medium uppercase transition-colors hover:bg-accent/10 ${
+                  reponse === v ? "border-primary bg-primary/5 text-primary" : ""
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={`reponse-${question.id}`}
+                  value={v}
+                  checked={reponse === v}
+                  onChange={() => setReponse(v)}
+                  className="sr-only"
+                />
+                {v}
+              </label>
+            ))}
+          </div>
+
+          {/* Option « Je ne sais pas » : passer la question sans deviner. */}
+          <label
+            htmlFor={`opt-${question.id}-jnsp`}
+            className={`flex cursor-pointer items-center justify-center rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-accent/10 ${
+              reponse === JE_NE_SAIS_PAS ? "border-primary bg-primary/5 text-foreground" : ""
+            }`}
+          >
+            <input
+              id={`opt-${question.id}-jnsp`}
+              type="radio"
+              name={`reponse-${question.id}`}
+              value={JE_NE_SAIS_PAS}
+              checked={reponse === JE_NE_SAIS_PAS}
+              onChange={() => setReponse(JE_NE_SAIS_PAS)}
+              className="sr-only"
+            />
+            {t.test.je_ne_sais_pas}
+          </label>
+          <p className="text-xs text-muted-foreground">{t.test.je_ne_sais_pas_aide}</p>
         </fieldset>
       ) : null}
 

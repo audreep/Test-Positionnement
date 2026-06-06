@@ -56,6 +56,8 @@ export const intakeSchema = z.object({
   accepte_politique: z.literal(true, {
     errorMap: () => ({ message: "Vous devez accepter la politique de confidentialite." })
   }),
+  // Abonnement a l'infolettre : optionnel (consentement specifique, non requis).
+  infolettre: z.boolean().optional().default(false),
   auto_evaluations: z.record(z.string(), autoEvaluationSchema)
 });
 

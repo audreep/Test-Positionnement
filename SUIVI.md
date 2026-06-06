@@ -4,6 +4,37 @@ Journal des modifications, par date. La plus récente en haut.
 
 ---
 
+## 5 juin 2026
+
+### Retours UX sur l'intake et l'accueil (code — à déployer)
+- **Accueil** : retrait de l'effet hover (ombre + couleur d'icône) sur les 3 cartes informatives — elles semblaient cliquables sans l'être.
+- **Point orphelin** corrigé avant « politique de confidentialité » (bug d'interpolation : le placeholder laissait « de la . » + un second point). Nouvelle clé `consentement_politique_avant` dans `fr.json`.
+- **Titre** de la section renommé « Consentement (Loi 25 – Québec) » → **« Consentement et confidentialité »**.
+- **Case infolettre optionnelle** ajoutée au formulaire : « Je souhaite m'abonner à l'infolettre du CFO masqué... ». Colonne `tp_clients.infolettre` (booléen, défaut faux) **créée en base** + migration `20260605000011_clients_infolettre.sql`. Persistée à la création ET à la mise à jour du client, affichée dans la fiche client admin et l'export CSV. Servira à la synchro Klaviyo en Phase 2.
+
+### Option « Je ne sais pas » étendue aux vrai/faux (code — à déployer)
+- Même mécanique (valeur sentinelle, comptée incorrecte) que pour choix multiple/cas pratique. Affichée sous les boutons Vrai/Faux en style pointillé.
+
+### Résidus de la fusion `tp_` corrigés (code — à déployer)
+- ⚠️ Deux requêtes imbriquées avaient échappé au renommage et auraient échoué en production : `scores_par_domaine`/`domaines`/`niveaux` → `tp_*` dans **la fiche client admin** (`admin/clients/[id]/page.tsx`) et **l'export CSV** (`api/admin/export-csv/route.ts`).
+
+### Vérifications
+- `tsc --noEmit` : aucun problème. Vitest : 62/62 tests verts (exécutés sur copie sandbox ; aucun `node_modules` créé dans le dossier OneDrive).
+
+### Révision des questions — TCD, Power Query, Power Pivot, VBA (base de données — déjà actif)
+- Même problème que Modélisation : bonne réponse presque toujours la plus longue (avec exemples entre parenthèses), leurres courts ou absurdes.
+- **46 questions corrigées** (PQ 12, TCD 12, Power Pivot 11, VBA 11) : bonnes réponses raccourcies, leurres réécrits plausibles et de longueur comparable ; 2 V/F reformulés en une seule affirmation (import web PQ). 18 questions jugées correctes non touchées.
+- Clés `bonne_reponse` inchangées → aucun impact sur le scoring. Vérification : écart max bonne réponse vs leurre le plus long ≤ 11 caractères sur les 5 domaines révisés.
+- Appliqué directement sur `tp_questions` (projet CRM). Formules toujours exclu (révisé manuellement).
+
+### Révision des questions de Modélisation financière (base de données — déjà actif)
+- **Problème** : les bonnes réponses étaient faciles à identifier — presque toujours la plus longue (souvent avec exemples entre parenthèses), et les leurres courts voire absurdes (« Allumer ou éteindre Excel »).
+- **Correctif** : 11 choix multiples réécrits (bonne réponse raccourcie, leurres plausibles et de longueur comparable) + 2 vrai/faux reformulés en une seule affirmation (gestionnaire de scénarios, Solveur). Clés `bonne_reponse` inchangées → aucun impact sur le scoring ni les réponses passées.
+- Appliqué directement sur `tp_questions` (projet CRM). 3 questions jugées correctes non touchées (INDIRECT, V/F valeurs codées en dur, V/F modèle qui balance).
+- Les champs `explication` (admin) n'ont pas été modifiés.
+
+---
+
 ## 3 juin 2026
 
 ### Fusion Supabase : projet « Test Positionnement » → projet CRM (code — à déployer)

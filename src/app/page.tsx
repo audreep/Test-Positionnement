@@ -107,9 +107,9 @@ export default async function HomePage() {
           ].map((bloc) => (
             <div
               key={bloc.titre}
-              className="group rounded-xl border bg-card p-6 transition-shadow hover:shadow-md"
+              className="rounded-xl border bg-card p-6"
             >
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-accent/15 group-hover:text-accent">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <bloc.icone className="h-5 w-5" />
               </div>
               <h3 className="mt-4 text-base font-semibold">{bloc.titre}</h3>

@@ -22,11 +22,11 @@ export async function GET() {
     .from("tp_tests")
     .select(`
       id, statut, score_global, date_debut, date_fin,
-      client:tp_clients(prenom, nom, courriel, source_acquisition, consentement_marketing),
-      scores:scores_par_domaine(
+      client:tp_clients(prenom, nom, courriel, source_acquisition, consentement_marketing, infolettre),
+      scores:tp_scores_par_domaine(
         pourcentage, nb_reponses, nb_correctes, passe,
-        domaine:domaines(nom, slug),
-        niveau_atteint:niveaux(nom)
+        domaine:tp_domaines(nom, slug),
+        niveau_atteint:tp_niveaux(nom)
       )
     `)
     .order("date_debut", { ascending: false });
@@ -45,6 +45,7 @@ export async function GET() {
     "client_courriel",
     "source_acquisition",
     "consentement_marketing",
+    "infolettre",
     "domaine",
     "niveau_atteint",
     "passe",
@@ -58,7 +59,7 @@ export async function GET() {
   for (const test of data ?? []) {
     const client = test.client as unknown as {
       prenom: string; nom: string; courriel: string;
-      source_acquisition: string; consentement_marketing: boolean;
+      source_acquisition: string; consentement_marketing: boolean; infolettre: boolean;
     } | null;
     const scores = (test.scores as unknown as Array<{
       pourcentage: number; nb_reponses: number; nb_correctes: number; passe: boolean;
@@ -71,6 +72,7 @@ export async function GET() {
         test.id, test.statut, test.score_global, test.date_debut, test.date_fin,
         client?.prenom, client?.nom, client?.courriel,
         client?.source_acquisition, String(client?.consentement_marketing ?? ""),
+        String(client?.infolettre ?? ""),
         "", "", "", "", "", ""
       ]));
       continue;
@@ -81,6 +83,7 @@ export async function GET() {
         test.id, test.statut, test.score_global, test.date_debut, test.date_fin,
         client?.prenom, client?.nom, client?.courriel,
         client?.source_acquisition, String(client?.consentement_marketing ?? ""),
+        String(client?.infolettre ?? ""),
         s.domaine?.nom,
         s.niveau_atteint?.nom ?? "Non évalué",
         String(s.passe),

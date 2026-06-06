@@ -148,6 +148,7 @@ export interface Database {
           courriel_normalise: string;
           source_acquisition: SourceAcquisition;
           consentement_marketing: boolean;
+          infolettre: boolean;
           date_consentement: string;
           cree_le: string;
         };
@@ -157,6 +158,7 @@ export interface Database {
           courriel: string;
           source_acquisition: SourceAcquisition;
           consentement_marketing: boolean;
+          infolettre?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["tp_clients"]["Insert"]>;
       };
