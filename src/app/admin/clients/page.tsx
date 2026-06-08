@@ -17,7 +17,7 @@ export default async function AdminClientsPage() {
     .select(`
       id, prenom, nom, courriel, source_acquisition, consentement_marketing,
       date_consentement, cree_le,
-      tests:tests(id, statut, score_global, date_fin)
+      tests:tp_tests(id, statut, score_global, date_fin)
     `)
     .order("cree_le", { ascending: false })
     .limit(500);

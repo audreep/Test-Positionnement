@@ -4,6 +4,15 @@ Journal des modifications, par date. La plus récente en haut.
 
 ---
 
+## 8 juin 2026
+
+### Liste des clients vide alors que la BD contient des clients (code — à déployer)
+- **Symptôme** : la page **Admin → Clients** affichait « 0 client(s) au total » alors que le tableau de bord comptait bien 5 clients et que la BD les contenait.
+- **Cause** : dernier résidu de la fusion `tp_`. Dans `admin/clients/page.tsx`, la relation imbriquée pointait encore vers `tests:tests(...)` (table inexistante depuis le renommage `tp_tests`). PostgREST ne résolvait pas la jointure et faisait échouer toute la requête → `data` null → liste vide. Le tableau de bord, lui, utilise des comptages séparés sans jointure, d'où l'écart.
+- **Correctif** : `tests:tests(...)` → **`tests:tp_tests(...)`**. Vérifié : c'était le seul résidu de ce type restant dans le code (les corrections du 5 juin avaient traité la fiche client et l'export CSV, mais pas la liste).
+
+---
+
 ## 5 juin 2026
 
 ### Retours UX sur l'intake et l'accueil (code — à déployer)
